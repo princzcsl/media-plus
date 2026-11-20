@@ -50,7 +50,7 @@ To update, replace the folder and click the reload icon on the extension.
 
 Chrome extensions can't run programs, so yt-dlp needs a small companion that Chrome talks to ([native messaging](https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging)). Windows only for now.
 
-1. Double-click `host\install.cmd` (or run `powershell -ExecutionPolicy Bypass -File host\install.ps1`)
+1. Double-click `host\install.cmd` (or run `powershell -ExecutionPolicy Bypass -File host\install.ps1`). Start it from Explorer or a normal terminal: an app that sandboxes the programs it launches (packaged Windows apps) keeps the registration to itself, and Chrome won't see it
 2. Reopen the Media+ popup: **Settings → yt-dlp** shows the versions found
 
 The script installs yt-dlp and ffmpeg with winget if they're missing, builds the companion with the C# compiler that comes with Windows (no download), and registers it for Chrome, Edge, Brave and Chromium for your user only (no admin rights). Everything lives in `%LOCALAPPDATA%\MediaPlus`; `host\uninstall.ps1` removes it.
