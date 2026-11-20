@@ -3,7 +3,7 @@
     "message": "Media+"
   },
   "extDescription": {
-    "message": "Contrôle les médias lus dans le navigateur : boost du volume, égaliseur avec presets, boucle, téléchargement MP4, capture d'image et lien vers la source."
+    "message": "Contrôle les médias lus dans le navigateur : boost du volume, égaliseur avec presets, boucle, téléchargement MP4/MP3 avec yt-dlp, capture d'image et lien vers la source."
   },
   "cmdOpen": {
     "message": "Ouvrir Media+"
@@ -122,23 +122,11 @@
   "pip": {
     "message": "Picture-in-picture"
   },
-  "record": {
-    "message": "Enregistrer en MP4"
-  },
-  "recordStop": {
-    "message": "Arrêter et enregistrer"
-  },
   "recordStarted": {
-    "message": "Enregistrement… arrête-le avec le même bouton"
+    "message": "Enregistrement pendant la lecture, le fichier sera enregistré à la fin"
   },
-  "recordSaved": {
-    "message": "Enregistrement sauvegardé"
-  },
-  "recordFromStart": {
-    "message": "Enregistrer depuis le début"
-  },
-  "recordNow": {
-    "message": "À partir d'ici"
+  "recordInstead": {
+    "message": "L'enregistrer pendant la lecture à la place"
   },
   "showOnPage": {
     "message": "Afficher sur la page"
@@ -149,14 +137,59 @@
   "close": {
     "message": "Fermer"
   },
-  "mseDownload": {
-    "message": "Ce média est diffusé en morceaux (MSE), il n'existe pas de fichier unique. Enregistre-le pendant la lecture (MP4) ou utilise un flux chargé par le lecteur."
+  "formatVideo": {
+    "message": "Vidéo MP4"
+  },
+  "formatAudio": {
+    "message": "Audio MP3"
+  },
+  "partWhole": {
+    "message": "En entier"
+  },
+  "partExtract": {
+    "message": "Extrait"
+  },
+  "from": {
+    "message": "De"
+  },
+  "to": {
+    "message": "à"
+  },
+  "currentPosition": {
+    "message": "Position actuelle"
+  },
+  "viaBrowser": {
+    "message": "Fichier direct : enregistré tout de suite par Chrome."
+  },
+  "viaYtdlp": {
+    "message": "Téléchargé par yt-dlp, puis enregistré par Chrome."
+  },
+  "viaRecord": {
+    "message": "Média diffusé en flux : enregistré pendant la lecture (MP4, en temps réel)."
+  },
+  "viaRecordAudio": {
+    "message": "Sans yt-dlp, le son est enregistré pendant la lecture, en M4A."
+  },
+  "installYtdlp": {
+    "message": "Installer yt-dlp"
+  },
+  "ytdlpStarted": {
+    "message": "yt-dlp télécharge, suis-le en haut"
+  },
+  "jobSaving": {
+    "message": "Enregistrement…"
+  },
+  "jobProcessing": {
+    "message": "Traitement (ffmpeg)…"
+  },
+  "jobDone": {
+    "message": "Enregistré"
+  },
+  "jobCanceled": {
+    "message": "Annulé"
   },
   "mseSource": {
     "message": "Flux chargés par le lecteur, depuis son CDN :"
-  },
-  "detectedStreams": {
-    "message": "Flux détectés"
   },
   "noStreams": {
     "message": "Aucun flux détecté pour l'instant : laisse le média jouer quelques secondes."
@@ -171,7 +204,7 @@
     "message": "Boost du volume"
   },
   "boostHelp": {
-    "message": "Jusqu'à 600 % pour tout l'onglet"
+    "message": "Jusqu'à $1 % pour tout l'onglet"
   },
   "presets": {
     "message": "Presets"
@@ -192,13 +225,10 @@
     "message": "Plat"
   },
   "preset_bass": {
+    "message": "Basses"
+  },
+  "preset_bassPlus": {
     "message": "Basses+"
-  },
-  "preset_bassMax": {
-    "message": "Basses max"
-  },
-  "preset_treble": {
-    "message": "Aigus+"
   },
   "preset_vocal": {
     "message": "Voix"
@@ -209,11 +239,41 @@
   "preset_music": {
     "message": "Musique"
   },
-  "preset_fps": {
-    "message": "FPS"
+  "preset_clarity": {
+    "message": "Clarté"
+  },
+  "preset_laptop": {
+    "message": "Haut-parleurs PC"
   },
   "preset_night": {
     "message": "Nuit"
+  },
+  "presetHelp_flat": {
+    "message": "Aucun changement"
+  },
+  "presetHelp_bass": {
+    "message": "Basses plus pleines, sans le « boueux » des 400 Hz"
+  },
+  "presetHelp_bassPlus": {
+    "message": "Basses fortes pour la musique et le casque"
+  },
+  "presetHelp_vocal": {
+    "message": "Voix claires : podcasts, conférences, interviews"
+  },
+  "presetHelp_movie": {
+    "message": "De l'impact et des dialogues clairs"
+  },
+  "presetHelp_music": {
+    "message": "Basses et aigus relevés, un peu comme un bouton loudness"
+  },
+  "presetHelp_clarity": {
+    "message": "Plus de détail et d'air, pour un son terne"
+  },
+  "presetHelp_laptop": {
+    "message": "Des basses que les petits haut-parleurs savent jouer, voix en avant"
+  },
+  "presetHelp_night": {
+    "message": "Passages forts et faibles rapprochés, voix en avant"
   },
   "equalizer": {
     "message": "Égaliseur"
@@ -225,16 +285,40 @@
     "message": "Sortie"
   },
   "limiter": {
-    "message": "Limiteur"
+    "message": "Anti-saturation"
   },
   "limiterHelp": {
-    "message": "Évite la saturation avec le boost"
+    "message": "Laisse de la marge à l'égaliseur et attrape les pics"
+  },
+  "night": {
+    "message": "Mode nuit"
+  },
+  "nightHelp": {
+    "message": "Rapproche les passages faibles et forts"
   },
   "mono": {
     "message": "Mono"
   },
+  "monoHelp": {
+    "message": "Le même son dans les deux oreilles"
+  },
   "balance": {
     "message": "Balance"
+  },
+  "left": {
+    "message": "G"
+  },
+  "right": {
+    "message": "D"
+  },
+  "center": {
+    "message": "Centre"
+  },
+  "mixerRestored": {
+    "message": "Tes derniers réglages du mixeur sont appliqués"
+  },
+  "mixerRestoredSite": {
+    "message": "Réglages du mixeur pour $1 appliqués"
   },
   "mixerNote": {
     "message": "Le mixeur traite tout le son de cet onglet. Chrome affiche une icône de partage sur l'onglet tant qu'il est actif."
@@ -274,6 +358,60 @@
   },
   "naming": {
     "message": "Noms des fichiers"
+  },
+  "companion": {
+    "message": "Module yt-dlp"
+  },
+  "hostChecking": {
+    "message": "Vérification…"
+  },
+  "hostMissing": {
+    "message": "Non installé : nécessaire pour le MP3, les extraits et YouTube en haute qualité"
+  },
+  "hostInstall": {
+    "message": "Installer"
+  },
+  "hostCheck": {
+    "message": "Vérifier"
+  },
+  "hostOk": {
+    "message": "Module yt-dlp prêt"
+  },
+  "engine": {
+    "message": "Télécharger avec"
+  },
+  "engineHelp": {
+    "message": "Les fichiers simples passent toujours par Chrome"
+  },
+  "engineAuto": {
+    "message": "yt-dlp si besoin"
+  },
+  "engineBrowser": {
+    "message": "Le navigateur seul"
+  },
+  "quality": {
+    "message": "Qualité vidéo"
+  },
+  "qualityHelp": {
+    "message": "Compatible = H.264, se lit partout"
+  },
+  "qualityBest": {
+    "message": "Meilleure"
+  },
+  "qualityCompat": {
+    "message": "Compatible"
+  },
+  "maxHeight": {
+    "message": "Résolution maximum"
+  },
+  "maxHeightBest": {
+    "message": "La meilleure"
+  },
+  "sendCookies": {
+    "message": "Utiliser la connexion au site"
+  },
+  "sendCookiesHelp": {
+    "message": "Donne à yt-dlp les cookies du site, pour les médias privés ou réservés"
   },
   "namingTitle": {
     "message": "Titre du média"
@@ -316,6 +454,21 @@
   },
   "maxBoost": {
     "message": "Boost maximum"
+  },
+  "rememberMixer": {
+    "message": "Mémoriser le mixeur"
+  },
+  "rememberMixerHelp": {
+    "message": "Appliqué quand tu ouvres Media+ sur l'onglet"
+  },
+  "rememberSite": {
+    "message": "Par site"
+  },
+  "rememberGlobal": {
+    "message": "Partout"
+  },
+  "rememberOff": {
+    "message": "Non"
   },
   "interface": {
     "message": "Interface"
@@ -376,6 +529,9 @@
   },
   "errNoVideo": {
     "message": "Ne fonctionne qu'avec une vidéo"
+  },
+  "errNoTracks": {
+    "message": "Rien à enregistrer pour l'instant : lance d'abord le média"
   },
   "errGesture": {
     "message": "Chrome a refusé : clique une fois sur la vidéo dans la page, puis réessaie"

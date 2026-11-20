@@ -94,15 +94,29 @@
       const el = ref.deref();
       if (el && !el.isConnected && !el.paused) found.add(el);
     }
-    return [...found].filter((el) => el.currentSrc || el.src || el.srcObject);
+    return [...found].filter((el) => (el.currentSrc || el.src || el.srcObject) && relevant(el));
+  }
+
+  const audible = (el) => !el.paused && !el.muted && el.volume > 0;
+
+  // Skips players the site keeps hidden (hover previews, preloaded next videos…)
+  // unless they actually make sound.
+  function relevant(el) {
+    if (audible(el)) return true;
+    if (el.tagName === 'AUDIO') return !el.paused || el.currentTime > 0 || el.controls;
+    if (!el.isConnected) return false;
+    const r = el.getBoundingClientRect();
+    if (r.width < 8 || r.height < 8) return false;
+    return el.checkVisibility ? el.checkVisibility({ opacityProperty: true, visibilityProperty: true }) : true;
   }
 
   const kindOf = (el) => (el.tagName === 'AUDIO' || (el.readyState > 0 && !el.videoWidth) ? 'audio' : 'video');
 
   function titleOf(el) {
     try {
+      // The page's media session describes what is playing, not every player on the page.
       const meta = navigator.mediaSession?.metadata;
-      if (meta?.title) return meta.artist ? `${meta.artist} - ${meta.title}` : meta.title;
+      if (meta?.title && (!el.paused || el.currentTime > 0)) return meta.artist ? `${meta.artist} - ${meta.title}` : meta.title;
     } catch { /* ignore */ }
     return el.getAttribute('aria-label') || el.title || document.title || location.hostname;
   }
@@ -154,6 +168,7 @@
       recording: rec ? { since: rec.since } : null,
       title: titleOf(el),
       host: location.hostname,
+      page: location.href,
       thumb: withThumb ? thumbOf(el) : undefined
     };
   }
@@ -203,21 +218,22 @@
   async function resolve(el) {
     const kind = kindOf(el);
     const title = titleOf(el);
-    if (el.srcObject) return { type: 'stream', kind, title, streams: listStreams() };
+    const page = location.href;
+    if (el.srcObject) return { type: 'stream', kind, title, page, streams: listStreams() };
     const src = el.currentSrc || el.src || '';
-    if (/^(https?|data):/i.test(src)) return { type: 'url', url: src, kind, title };
+    if (/^(https?|data):/i.test(src)) return { type: 'url', url: src, kind, title, page };
     if (src.startsWith('blob:')) {
       try {
         const res = await fetch(src);
         const mime = res.headers.get('content-type');
         res.body?.cancel();
-        return { type: 'url', url: src, blob: true, mime, kind, title };
+        return { type: 'url', url: src, blob: true, mime, kind, title, page };
       } catch {
         // MediaSource blob: the file only exists as segments fetched from the CDN.
-        return { type: 'mse', kind, title, streams: listStreams() };
+        return { type: 'mse', kind, title, page, streams: listStreams() };
       }
     }
-    return { type: 'none', kind, title, streams: listStreams() };
+    return { type: 'none', kind, title, page, streams: listStreams() };
   }
 
   function setAB(el, range) {
@@ -252,10 +268,15 @@
     for (let i = 0; i < 20 && !ready(); i++) await new Promise((r) => setTimeout(r, 50));
   }
 
-  async function startRecording(el, { fromStart = false } = {}) {
+  const tc = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}m${String(Math.floor(s % 60)).padStart(2, '0')}s`;
+
+  // Records the media while it plays: the whole of it, from now, or a start-end extract.
+  async function startRecording(el, { fromStart = false, start = null, end = null, audioOnly = false } = {}) {
     if (recorders.has(el)) return;
-    const kind = kindOf(el);
-    if (fromStart || el.ended) el.currentTime = 0;
+    const kind = audioOnly ? 'audio' : kindOf(el);
+    const section = start != null && end > start;
+    if (section) el.currentTime = start;
+    else if (fromStart || el.ended) el.currentTime = 0;
     if (el.paused) await el.play().catch(() => {});
     // Capture after playback restarted: tracks of an ended element are already dead.
     const stream = el.captureStream();
@@ -263,16 +284,24 @@
     const tracks = kind === 'audio' ? stream.getAudioTracks() : stream.getTracks();
     if (!tracks.length) throw new Error('noTracks');
 
-    const entry = { recorder: null, since: Date.now(), onEnded: () => stopRecording(el) };
+    const entry = { recorder: null, since: Date.now(), onEnded: () => stopRecording(el), onTime: null };
     el.addEventListener('ended', entry.onEnded);
+    if (section) {
+      entry.onTime = () => { if (el.currentTime >= end) stopRecording(el); };
+      el.addEventListener('timeupdate', entry.onTime);
+    }
     recorders.set(el, entry);
+    const detach = () => {
+      el.removeEventListener('ended', entry.onEnded);
+      if (entry.onTime) el.removeEventListener('timeupdate', entry.onTime);
+      recorders.delete(el);
+    };
 
     // Some sources reject a given encoder setup (e.g. H.264 profile): fall back to the next type.
     const launch = (types) => {
       const mimeType = types[0];
       if (!mimeType) {
-        el.removeEventListener('ended', entry.onEnded);
-        recorders.delete(el);
+        detach();
         return;
       }
       const recorder = new MediaRecorder(new MediaStream(tracks), {
@@ -291,15 +320,16 @@
           launch(types.slice(1));
           return;
         }
-        el.removeEventListener('ended', entry.onEnded);
-        recorders.delete(el);
+        detach();
+        if (section && !el.paused) el.pause();
         const type = mimeType.split(';')[0];
         const blob = new Blob(chunks, { type });
         if (!blob.size) return;
-        const ext = type.endsWith('mp4') ? 'mp4' : type.startsWith('audio/webm') ? 'weba' : 'webm';
+        const ext = { 'video/mp4': 'mp4', 'audio/mp4': 'm4a', 'audio/webm': 'weba' }[type] || 'webm';
+        const suffix = section ? `${tc(start)}-${tc(end)}` : '';
         const url = URL.createObjectURL(blob);
         setTimeout(() => URL.revokeObjectURL(url), 10 * 60 * 1000);
-        chrome.runtime.sendMessage({ type: 'download', url, mime: type, kind, title: titleOf(el), blob: true })
+        chrome.runtime.sendMessage({ type: 'download', url, mime: type, ext, suffix, kind, title: titleOf(el), blob: true })
           .then((res) => res?.error && saveWithAnchor(url, `${titleOf(el)}.${ext}`))
           .catch(() => saveWithAnchor(url, `recording.${ext}`));
       };

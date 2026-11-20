@@ -2,13 +2,16 @@ import { getSettings } from './shared/settings.js';
 import { buildFilename, extFromMime, extFromUrl, timecode } from './shared/files.js';
 import { listMedia, runOp, findBySrc, pickPrimary, captureFrame, saveInFrame, bestSource } from './shared/tab.js';
 
-const ACCENT = '#7c6cff';
+const ACCENT = '#8b6cff';
+const HOST = 'com.mediaplus.host';
 const t = (key, subs) => chrome.i18n.getMessage(key, subs) || key;
 
-// ---------- Downloads ----------
+// ---------- Browser downloads ----------
 
 // Blob downloads the browser could not read get saved from the page instead.
 const blobDownloads = new Map();
+// Chrome download id -> yt-dlp job id.
+const hostDownloads = new Map();
 
 async function headMime(url) {
   try {
@@ -42,12 +45,20 @@ async function startDownload({ url, mime, kind, title, pageUrl, tabId, frameId, 
 }
 
 chrome.downloads.onChanged.addListener(async ({ id, state, error }) => {
-  const entry = blobDownloads.get(id);
-  if (!entry || !state) return;
-  blobDownloads.delete(id);
-  if (state.current === 'interrupted' && error?.current !== 'USER_CANCELED') {
-    await chrome.downloads.erase({ id }).catch(() => {});
-    await saveInFrame(entry.tabId, entry.frameId, entry.url, entry.name).catch(() => {});
+  if (!state || state.current === 'in_progress') return;
+  const blob = blobDownloads.get(id);
+  if (blob) {
+    blobDownloads.delete(id);
+    if (state.current === 'interrupted' && error?.current !== 'USER_CANCELED') {
+      await chrome.downloads.erase({ id }).catch(() => {});
+      await saveInFrame(blob.tabId, blob.frameId, blob.url, blob.name).catch(() => {});
+    }
+  }
+  const jobId = hostDownloads.get(id);
+  if (jobId) {
+    hostDownloads.delete(id);
+    const ok = state.current === 'complete' || error?.current === 'USER_CANCELED';
+    await finishJob(jobId, ok ? { status: 'done', canceled: state.current !== 'complete' } : { status: 'error', error: error?.current || 'download failed' });
   }
 });
 
@@ -59,10 +70,194 @@ async function pageUrlOf(tabId) {
   }
 }
 
-async function downloadMedia({ tabId, frameId, id }) {
+// ---------- yt-dlp companion (native messaging) ----------
+
+let port = null;
+let pings = [];
+const jobs = new Map();
+
+function hostPort() {
+  if (port) return port;
+  port = chrome.runtime.connectNative(HOST);
+  port.onMessage.addListener(onHostMessage);
+  port.onDisconnect.addListener(() => {
+    const error = chrome.runtime.lastError?.message || 'disconnected';
+    port = null;
+    pings.forEach((p) => p.reject(new Error(error)));
+    pings = [];
+    for (const job of jobs.values()) {
+      if (job.status === 'running') updateJob(job.id, { status: 'error', error });
+    }
+  });
+  return port;
+}
+
+function releaseIfIdle() {
+  const busy = [...jobs.values()].some((j) => j.status === 'running' || j.status === 'saving');
+  if (port && !busy) {
+    port.disconnect();
+    port = null;
+  }
+}
+
+async function hostInfo(force = false) {
+  const { host } = await chrome.storage.session.get('host');
+  if (!force && host && Date.now() - host.at < 60_000) return host;
+  let info;
+  try {
+    const p = hostPort();
+    const pong = await new Promise((resolve, reject) => {
+      pings.push({ resolve, reject });
+      p.postMessage({ cmd: 'ping', id: 'ping' });
+      setTimeout(() => reject(new Error('timeout')), 6000);
+    });
+    info = { installed: true, ytdlp: pong.ytdlp, ffmpeg: pong.ffmpeg, at: Date.now() };
+  } catch (err) {
+    info = { installed: false, error: err.message, at: Date.now() };
+  }
+  await chrome.storage.session.set({ host: info });
+  releaseIfIdle();
+  return info;
+}
+
+async function saveJobs() {
+  await chrome.storage.session.set({ jobs: [...jobs.values()] });
+}
+
+async function updateJob(id, patch) {
+  const job = jobs.get(id);
+  if (!job) return;
+  Object.assign(job, patch);
+  await saveJobs();
+}
+
+async function finishJob(id, patch) {
+  await updateJob(id, patch);
+  port?.postMessage({ cmd: 'cleanup', id });
+  releaseIfIdle();
+  if (patch.status === 'done') {
+    setTimeout(async () => {
+      jobs.delete(id);
+      await saveJobs();
+    }, 6000);
+  }
+}
+
+async function onHostMessage(msg) {
+  if (msg.type === 'pong') {
+    pings.forEach((p) => p.resolve(msg));
+    pings = [];
+    return;
+  }
+  const job = jobs.get(msg.id);
+  if (!job) return;
+  if (msg.type === 'progress') {
+    const pct = parseFloat(msg.percent);
+    await updateJob(job.id, msg.stage
+      ? { stage: msg.stage }
+      : { pct: Number.isFinite(pct) ? pct : job.pct, speed: msg.speed || '', eta: msg.eta || '' });
+  } else if (msg.type === 'error') {
+    await finishJob(job.id, { status: 'error', error: msg.error });
+  } else if (msg.type === 'done') {
+    await updateJob(job.id, { status: 'saving', pct: 100 });
+    const ext = (msg.name.match(/\.([a-z0-9]+)$/i)?.[1] || (job.format === 'mp3' ? 'mp3' : 'mp4')).toLowerCase();
+    const settings = await getSettings();
+    const filename = buildFilename({ title: job.title, pageUrl: job.pageUrl, ext, suffix: job.suffix }, settings);
+    try {
+      const downloadId = await chrome.downloads.download({ url: msg.url, filename, saveAs: settings.saveAs, conflictAction: 'uniquify' });
+      hostDownloads.set(downloadId, job.id);
+    } catch (err) {
+      await finishJob(job.id, { status: 'error', error: err.message });
+    }
+  }
+}
+
+function netscapeCookies(cookies) {
+  const lines = ['# Netscape HTTP Cookie File'];
+  for (const c of cookies) {
+    const domain = c.hostOnly ? c.domain : c.domain.startsWith('.') ? c.domain : `.${c.domain}`;
+    lines.push([domain, c.hostOnly ? 'FALSE' : 'TRUE', c.path, c.secure ? 'TRUE' : 'FALSE',
+      Math.round(c.expirationDate || 0), c.name, c.value].join('\t'));
+  }
+  return `${lines.join('\n')}\n`;
+}
+
+async function startJob({ url, pageUrl, title, format, start, end, tabId, frameId, mediaId }) {
+  const settings = await getSettings();
+  const id = `j${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+  const section = start != null && end > start;
+  const job = {
+    id, title, format, pageUrl, tabId, frameId, mediaId,
+    start: section ? start : null,
+    end: section ? end : null,
+    suffix: section ? `${timecode(start)}-${timecode(end)}` : '',
+    status: 'running', pct: 0, speed: '', eta: '', at: Date.now()
+  };
+  jobs.set(id, job);
+  await saveJobs();
+
+  let cookies = null;
+  if (settings.sendCookies) {
+    try {
+      cookies = netscapeCookies(await chrome.cookies.getAll({ url: pageUrl }));
+    } catch { /* no cookies */ }
+  }
+  hostPort().postMessage({
+    cmd: 'download', id, url, format,
+    quality: settings.quality,
+    maxHeight: settings.maxHeight,
+    start: job.start, end: job.end,
+    cookies
+  });
+  return { ok: true, via: 'ytdlp', jobId: id };
+}
+
+const jobOps = {
+  async cancel({ id }) {
+    const job = jobs.get(id);
+    if (!job) return;
+    port?.postMessage({ cmd: 'cancel', id });
+    port?.postMessage({ cmd: 'cleanup', id });
+    jobs.delete(id);
+    await saveJobs();
+    releaseIfIdle();
+  },
+  async dismiss({ id }) {
+    jobs.delete(id);
+    await saveJobs();
+  }
+};
+
+// ---------- One download entry point ----------
+
+// Simple files go through Chrome; streamed media, MP3 and extracts through yt-dlp;
+// without the companion (or for sites yt-dlp can't read), the media is recorded while it plays.
+async function downloadMedia({ tabId, frameId, id, format = 'mp4', start = null, end = null, forceRecord = false }) {
+  const settings = await getSettings();
   const resolved = await runOp(tabId, frameId, id, 'resolve');
-  if (resolved.type !== 'url') return { mse: true, kind: resolved.kind, streams: resolved.streams || [] };
-  return startDownload({ ...resolved, tabId, frameId, pageUrl: await pageUrlOf(tabId) });
+  const section = start != null && end > start;
+  const pageUrl = resolved.page && /^https?:/.test(resolved.page) ? resolved.page : await pageUrlOf(tabId);
+  const directUrl = resolved.type === 'url' && /^https?:/i.test(resolved.url) ? resolved.url : null;
+
+  const record = async () => {
+    await runOp(tabId, frameId, id, 'record', { start: section ? start : null, end: section ? end : null, audioOnly: format === 'mp3', fromStart: !section });
+    return { ok: true, via: 'record' };
+  };
+
+  if (forceRecord) return record();
+
+  if (resolved.type === 'url' && format === 'mp4' && !section) {
+    return { ...(await startDownload({ ...resolved, tabId, frameId, pageUrl })), via: 'browser' };
+  }
+
+  if (settings.engine !== 'browser') {
+    const host = await hostInfo();
+    const target = directUrl || (/^https?:/i.test(pageUrl) ? pageUrl : null);
+    if (host.installed && target) {
+      return startJob({ url: target, pageUrl, title: resolved.title, format, start, end, tabId, frameId, mediaId: id });
+    }
+  }
+  return record();
 }
 
 async function downloadShot({ dataUrl, format, title, time, tabId }) {
@@ -166,6 +361,9 @@ const handlers = {
     }),
   'media:download': downloadMedia,
   'shot:download': downloadShot,
+  'host:info': ({ force }) => hostInfo(force),
+  'job:cancel': jobOps.cancel,
+  'job:dismiss': jobOps.dismiss,
   'audio:get': audio.get,
   'audio:start': audio.start,
   'audio:update': audio.update,
@@ -206,12 +404,7 @@ async function runAction(action, tab, media) {
     }
     if (action === 'download') {
       const res = await downloadMedia({ tabId: tab.id, frameId: media.frameId, id: media.id });
-      if (res.mse) {
-        // Segmented stream: record it in real time instead.
-        await runOp(tab.id, media.frameId, media.id, 'record', {});
-        return flash(tab.id, 'REC');
-      }
-      return flash(tab.id, res.error ? 'ERR' : 'OK');
+      return flash(tab.id, res.error ? 'ERR' : res.via === 'record' ? 'REC' : 'OK');
     }
     if (action === 'source') {
       const resolved = await runOp(tab.id, media.frameId, media.id, 'resolve');

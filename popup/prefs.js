@@ -1,6 +1,6 @@
-import { h, toast } from './ui.js';
+import { h, toast, send } from './ui.js';
 import { t } from '../shared/i18n.js';
-import { DEFAULTS, saveSettings, resetSettings } from '../shared/settings.js';
+import { DEFAULTS, saveSettings, resetSettings, HOST_INSTALL_URL } from '../shared/settings.js';
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
 
@@ -10,7 +10,7 @@ const parse = (el, raw) => {
   return raw;
 };
 
-export async function initPrefs(settings, onChange) {
+export async function initPrefs(settings, host, hostReady, onChange) {
   const speedSelect = document.getElementById('default-speed');
   speedSelect.append(...SPEEDS.map((s) => h('option', { value: String(s) }, `${s}×`)));
 
@@ -36,6 +36,39 @@ export async function initPrefs(settings, onChange) {
       onChange(key);
     });
   }
+
+  // yt-dlp companion
+  const status = document.getElementById('host-status');
+  const hostAction = document.getElementById('host-action');
+  function renderHost() {
+    if (!host.checked) {
+      status.textContent = t('hostChecking');
+      hostAction.hidden = true;
+      return;
+    }
+    hostAction.hidden = false;
+    if (host.installed) {
+      status.textContent = `yt-dlp ${host.ytdlp || '?'} · ffmpeg ${host.ffmpeg ? '✓' : '✗'}`;
+      hostAction.textContent = t('hostCheck');
+    } else {
+      status.textContent = t('hostMissing');
+      hostAction.textContent = t('hostInstall');
+    }
+  }
+  hostAction.addEventListener('click', async () => {
+    if (!host.installed) {
+      chrome.tabs.create({ url: HOST_INSTALL_URL });
+      return;
+    }
+    host.checked = false;
+    renderHost();
+    const info = await send({ type: 'host:info', force: true }).catch(() => ({ installed: false }));
+    Object.assign(host, info, { checked: true });
+    renderHost();
+    toast(t(host.installed ? 'hostOk' : 'hostMissing'), host.installed ? 'info' : 'error');
+  });
+  renderHost();
+  hostReady.then(renderHost);
 
   document.getElementById('open-shortcuts').addEventListener('click', () => {
     chrome.tabs.create({ url: 'chrome://extensions/shortcuts' });

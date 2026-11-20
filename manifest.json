@@ -1,12 +1,25 @@
 {
   "manifest_version": 3,
   "name": "Media+",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "default_locale": "en",
   "description": "__MSG_extDescription__",
   "minimum_chrome_version": "126",
-  "permissions": ["storage", "downloads", "scripting", "activeTab", "tabCapture", "offscreen", "contextMenus"],
-  "host_permissions": ["<all_urls>"],
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA5YVEQ5YnxZ6DW1NvPDlivmHW0IcuLa1WdaRvkJp4KU9AXWg+XokhuohhK2bR7l/EzRdJOjor7tSku2YYng9E1QaAI9jihG4610Rzobv49ivfpZb0Ypvgq+QWOJhH2WkztHEXcCWtIQvuAGR5z8kc5mmMx25ZxJp3q9MX2c+c0OHcHHOyY9iThFNo8wnoAYohGFEsS8uBquQq/70s5IzJ17zPHXIHsk7CI0038ho4GShT/7nogUootagOOSYdUONzJowAdrOp+MKann71yYdCQNvYKmlwPX7EQe3j/4uFOpVEf0w9ygDumptX+nZTNoO5BXzRKqIVOEVoz5Y7kuDjIwIDAQAB",
+  "permissions": [
+    "storage",
+    "downloads",
+    "scripting",
+    "activeTab",
+    "tabCapture",
+    "offscreen",
+    "contextMenus",
+    "nativeMessaging",
+    "cookies"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
   "icons": {
     "16": "icons/16.png",
     "32": "icons/32.png",
@@ -19,8 +32,12 @@
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"],
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ],
       "run_at": "document_idle",
       "all_frames": true,
       "match_origin_as_fallback": true
@@ -38,18 +55,26 @@
   },
   "commands": {
     "_execute_action": {
-      "suggested_key": { "default": "Alt+Shift+M" }
+      "suggested_key": {
+        "default": "Alt+Shift+M"
+      }
     },
     "screenshot": {
-      "suggested_key": { "default": "Alt+Shift+S" },
+      "suggested_key": {
+        "default": "Alt+Shift+S"
+      },
       "description": "__MSG_cmdScreenshot__"
     },
     "toggle-loop": {
-      "suggested_key": { "default": "Alt+Shift+L" },
+      "suggested_key": {
+        "default": "Alt+Shift+L"
+      },
       "description": "__MSG_cmdLoop__"
     },
     "download-media": {
-      "suggested_key": { "default": "Alt+Shift+D" },
+      "suggested_key": {
+        "default": "Alt+Shift+D"
+      },
       "description": "__MSG_cmdDownload__"
     }
   }

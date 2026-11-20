@@ -1,19 +1,29 @@
-import { h, toast, send } from './ui.js';
-import { paintRange } from './media.js';
+import { h, toast, send, paintRange } from './ui.js';
 import { t } from '../shared/i18n.js';
-import { BANDS, EQ_RANGE, BAND_Q, bandType, bandLabel, PRESETS, freshState, isNeutral, sameEq } from '../shared/audio.js';
+import { BANDS, EQ_RANGE, bandLabel, PRESETS, freshState, isNeutral, sameEq, cleanState, fitEq, clampDb } from '../shared/audio.js';
+import { createResponse } from '../shared/curve.js';
 import { getCustomPresets, saveCustomPresets } from '../shared/settings.js';
 
 const MAX_CUSTOM = 12;
-const CURVE_POINTS = 160;
-const DB_SPAN = 15;
+const CURVE_POINTS = 180;
+const DB_SPAN = 24;
+const SPECTRUM_MS = 50;
 
-// Position on the evenly spaced band axis (0..9) for a frequency, and back.
+// Position on the evenly spaced band axis (0..7) for a frequency, and back.
 function freqAt(u) {
-  if (u <= 0) return BANDS[0] * 2 ** u;
-  if (u >= BANDS.length - 1) return BANDS[BANDS.length - 1] * 2 ** (u - BANDS.length + 1);
+  const last = BANDS.length - 1;
+  if (u <= 0) return BANDS[0] * 2 ** (u * 1.3);
+  if (u >= last) return BANDS[last] * 2 ** ((u - last) * 0.6);
   const i = Math.floor(u);
   return BANDS[i] * (BANDS[i + 1] / BANDS[i]) ** (u - i);
+}
+
+function uAt(f) {
+  const last = BANDS.length - 1;
+  if (f <= BANDS[0]) return Math.log2(f / BANDS[0]) / 1.3;
+  if (f >= BANDS[last]) return last + Math.log2(f / BANDS[last]) / 0.6;
+  const i = BANDS.findIndex((b) => b > f) - 1;
+  return i + Math.log2(f / BANDS[i]) / Math.log2(BANDS[i + 1] / BANDS[i]);
 }
 
 function captureError(err) {
@@ -23,19 +33,44 @@ function captureError(err) {
   return `${t('errGeneric')} ${msg}`;
 }
 
+const siteOf = (url) => {
+  try {
+    const u = new URL(url);
+    return /^https?:$/.test(u.protocol) ? u.hostname.replace(/^www\./, '') : null;
+  } catch {
+    return null;
+  }
+};
+
 export async function initMixer(tab, settings) {
   const $ = (id) => document.getElementById(id);
   const saved = (await send({ type: 'audio:get', tabId: tab.id }).catch(() => null))?.state;
-  const state = saved ? { ...freshState(), ...saved, eq: [...saved.eq] } : freshState();
-  delete state.active;
+  const state = cleanState(saved);
   let active = !!saved;
-  let custom = await getCustomPresets();
+  let custom = (await getCustomPresets()).map((p) => ({ ...p, eq: fitEq(p.eq) }));
+  const listeners = new Set();
+  const site = siteOf(tab.url);
 
   const live = $('audio-live');
   const offBtn = $('mixer-off');
   const boost = $('boost');
   const boostValue = $('boost-value');
   const canvas = $('eq-curve');
+
+  // ---- Remembered settings (per site or global) ----
+
+  const memoryKey = () => (settings.rememberMixer === 'site' ? (site ? `mixer:site:${site}` : null) : settings.rememberMixer === 'global' ? 'mixer:global' : null);
+
+  let rememberTimer = null;
+  function remember() {
+    const key = memoryKey();
+    if (!key) return;
+    clearTimeout(rememberTimer);
+    rememberTimer = setTimeout(() => {
+      if (isNeutral(state)) chrome.storage.local.remove(key);
+      else chrome.storage.local.set({ [key]: cleanState(state) });
+    }, 400);
+  }
 
   // ---- Sync with the audio engine (one request in flight, latest state wins) ----
 
@@ -101,11 +136,14 @@ export async function initMixer(tab, settings) {
   function renderStatus() {
     live.hidden = !active;
     offBtn.hidden = !active;
+    spectrumLoop();
   }
 
-  function commit() {
+  function commit({ save = true } = {}) {
     render();
     push();
+    if (save) remember();
+    listeners.forEach((fn) => fn(state));
   }
 
   // ---- Boost ----
@@ -114,6 +152,7 @@ export async function initMixer(tab, settings) {
 
   function setMax(max) {
     boost.max = String(max);
+    $('boost-help').textContent = t('boostHelp', String(max));
     quick.replaceChildren(...[100, 150, 200, 300, 400, 600].filter((v) => v <= max).map((v) =>
       h('button', { class: 'chip', dataset: { boost: v }, onclick: () => { state.boost = v; commit(); } }, `${v} %`)));
     render();
@@ -132,13 +171,17 @@ export async function initMixer(tab, settings) {
 
   function applyPreset(p) {
     state.eq = [...p.eq];
-    if (p.limiter) state.limiter = true;
+    state.night = !!p.night;
     commit();
   }
 
   function renderPresets() {
     const builtIn = PRESETS.map((p) =>
-      h('button', { class: ['chip', sameEq(state.eq, p.eq) && 'on'], onclick: () => applyPreset(p) }, t(`preset_${p.id}`)));
+      h('button', {
+        class: ['chip', sameEq(state.eq, p.eq) && !!p.night === state.night && 'on'],
+        title: t(`presetHelp_${p.id}`),
+        onclick: () => applyPreset(p)
+      }, t(`preset_${p.id}`)));
     const mine = custom.map((p) =>
       h('button', { class: ['chip', sameEq(state.eq, p.eq) && 'on'], title: p.name, onclick: () => applyPreset(p) },
         p.name,
@@ -165,7 +208,7 @@ export async function initMixer(tab, settings) {
     e.preventDefault();
     const name = nameInput.value.trim();
     if (!name) return;
-    custom = [...custom, { id: Date.now().toString(36), name, eq: [...state.eq] }];
+    custom = [...custom, { id: Date.now().toString(36), name, eq: [...state.eq], night: state.night }];
     await saveCustomPresets(custom);
     form.hidden = true;
     renderPresets();
@@ -198,39 +241,23 @@ export async function initMixer(tab, settings) {
 
   $('eq-reset').addEventListener('click', () => {
     state.eq = BANDS.map(() => 0);
+    state.night = false;
     commit();
   });
 
-  // Response curve computed by the same biquad filters the engine uses.
-  const offline = new OfflineAudioContext(1, 1, 48000);
-  const filters = BANDS.map((f, i) => {
-    const node = offline.createBiquadFilter();
-    node.type = bandType(i);
-    node.frequency.value = f;
-    node.Q.value = BAND_Q;
-    return node;
-  });
   const us = Float32Array.from({ length: CURVE_POINTS }, (_, k) => -0.5 + (k / (CURVE_POINTS - 1)) * BANDS.length);
-  const freqs = Float32Array.from(us, freqAt);
-  const mag = new Float32Array(CURVE_POINTS);
-  const phase = new Float32Array(CURVE_POINTS);
-
-  function response() {
-    const total = new Float32Array(CURVE_POINTS);
-    filters.forEach((node, i) => {
-      node.gain.value = state.eq[i];
-      node.getFrequencyResponse(freqs, mag, phase);
-      for (let k = 0; k < CURVE_POINTS; k++) total[k] += 20 * Math.log10(mag[k]);
-    });
-    return total;
-  }
+  const response = createResponse(Float32Array.from(us, freqAt));
+  const bandResponse = createResponse(BANDS);
+  // Spectrum bars: 64 log bands from 30 Hz to 18 kHz (same split as the engine).
+  const barU = Array.from({ length: 65 }, (_, i) => uAt(30 * 600 ** (i / 64)));
+  let bars = null;
 
   function drawCurve() {
     const dpr = devicePixelRatio || 1;
     const w = canvas.clientWidth;
     const hgt = canvas.clientHeight;
     if (!w) return;
-    if (canvas.width !== Math.round(w * dpr)) {
+    if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(hgt * dpr)) {
       canvas.width = Math.round(w * dpr);
       canvas.height = Math.round(hgt * dpr);
     }
@@ -242,46 +269,62 @@ export async function initMixer(tab, settings) {
     const accent = css.getPropertyValue('--accent').trim();
     const tint = css.getPropertyValue('--tint').trim();
     const x = (u) => ((u + 0.5) / BANDS.length) * w;
-    const y = (db) => hgt / 2 - (db / DB_SPAN) * (hgt / 2 - 6);
+    const y = (db) => hgt / 2 - (Math.max(-DB_SPAN, Math.min(DB_SPAN, db)) / DB_SPAN) * (hgt / 2 - 6);
+
+    // Live spectrum behind the curve.
+    if (bars) {
+      g.fillStyle = `rgba(${tint}, 0.1)`;
+      for (let i = 0; i < bars.length; i++) {
+        const x0 = x(barU[i]);
+        const x1 = x(barU[i + 1]);
+        if (x1 < 0 || x0 > w) continue;
+        const bh = (bars[i] / 255) * (hgt - 4);
+        g.fillRect(x0, hgt - bh, Math.max(1, x1 - x0 - 1), bh);
+      }
+    }
 
     g.lineWidth = 1;
-    for (const db of [-12, -6, 0, 6, 12]) {
-      g.strokeStyle = `rgba(${tint}, ${db === 0 ? 0.16 : 0.06})`;
+    for (const db of [-18, -12, -6, 0, 6, 12, 18]) {
+      g.strokeStyle = `rgba(${tint}, ${db === 0 ? 0.18 : 0.06})`;
       g.beginPath();
       g.moveTo(0, Math.round(y(db)) + 0.5);
       g.lineTo(w, Math.round(y(db)) + 0.5);
       g.stroke();
     }
 
-    const curve = response();
+    const curve = response(state.eq);
     const line = new Path2D();
     us.forEach((u, k) => {
-      const py = y(Math.max(-DB_SPAN, Math.min(DB_SPAN, curve[k])));
-      if (k) line.lineTo(x(u), py);
-      else line.moveTo(x(u), py);
+      if (k) line.lineTo(x(u), y(curve[k]));
+      else line.moveTo(x(u), y(curve[k]));
     });
-
     const area = new Path2D(line);
     area.lineTo(w, y(0));
     area.lineTo(0, y(0));
     area.closePath();
     const fill = g.createLinearGradient(0, 0, 0, hgt);
-    fill.addColorStop(0, `${accent}55`);
+    fill.addColorStop(0, `${accent}66`);
     fill.addColorStop(0.5, `${accent}10`);
-    fill.addColorStop(1, `${accent}55`);
+    fill.addColorStop(1, `${accent}66`);
     g.fillStyle = fill;
     g.fill(area);
-
     g.strokeStyle = accent;
     g.lineWidth = 2;
     g.lineJoin = 'round';
     g.stroke(line);
 
+    // Handles sit on the curve, where the band really ends up.
+    const atBands = bandResponse(state.eq);
     state.eq.forEach((db, i) => {
       g.beginPath();
-      g.arc(x(i), y(db), 3.5, 0, Math.PI * 2);
-      g.fillStyle = db ? accent : `rgba(${tint}, 0.35)`;
+      g.arc(x(i), y(atBands[i]), 4, 0, Math.PI * 2);
+      g.fillStyle = db ? '#fff' : `rgba(${tint}, 0.4)`;
       g.fill();
+      if (db) {
+        g.lineWidth = 2;
+        g.strokeStyle = accent;
+        g.stroke();
+      }
     });
   }
 
@@ -293,7 +336,7 @@ export async function initMixer(tab, settings) {
     if (dragBand < 0) dragBand = Math.max(0, Math.min(BANDS.length - 1, Math.round(u)));
     const half = rect.height / 2 - 6;
     const db = ((rect.height / 2 - (e.clientY - rect.top)) / half) * DB_SPAN;
-    state.eq[dragBand] = Math.max(-EQ_RANGE, Math.min(EQ_RANGE, Math.round(db * 2) / 2));
+    state.eq[dragBand] = clampDb(Math.round(db * 2) / 2);
     commit();
   }
   canvas.addEventListener('pointerdown', (e) => {
@@ -307,14 +350,44 @@ export async function initMixer(tab, settings) {
   canvas.addEventListener('pointerup', () => { dragBand = -1; });
   new ResizeObserver(drawCurve).observe(canvas);
 
+  // Spectrum: polled from the engine only while the mixer view is on screen and processing.
+  let spectrumTimer = null;
+  function spectrumLoop() {
+    clearTimeout(spectrumTimer);
+    const visible = !$('view-mixer').hidden && document.visibilityState === 'visible';
+    if (!active || !visible) {
+      if (bars) {
+        bars = null;
+        drawCurve();
+      }
+      return;
+    }
+    chrome.runtime.sendMessage({ target: 'offscreen', op: 'spectrum', tabId: tab.id })
+      .then((res) => {
+        bars = res?.bars || null;
+        drawCurve();
+      })
+      .catch(() => {})
+      .finally(() => { spectrumTimer = setTimeout(spectrumLoop, SPECTRUM_MS); });
+  }
+  document.addEventListener('visibilitychange', spectrumLoop);
+
   // ---- Output ----
 
   const limiter = $('limiter');
+  const night = $('night');
   const mono = $('mono');
   const balance = $('balance');
+  const balanceValue = $('balance-value');
   limiter.addEventListener('change', () => { state.limiter = limiter.checked; commit(); });
+  night.addEventListener('change', () => { state.night = night.checked; commit(); });
   mono.addEventListener('change', () => { state.mono = mono.checked; commit(); });
-  balance.addEventListener('input', () => { state.balance = Number(balance.value); commit(); });
+  balance.addEventListener('input', () => {
+    const v = Number(balance.value);
+    // Snaps to the center so it's easy to put back.
+    state.balance = Math.abs(v) <= 5 ? 0 : v;
+    commit();
+  });
   balance.addEventListener('dblclick', () => { state.balance = 0; commit(); });
 
   offBtn.addEventListener('click', () => {
@@ -326,22 +399,26 @@ export async function initMixer(tab, settings) {
   // ---- Render ----
 
   function render() {
-    boost.value = String(state.boost);
+    if (document.activeElement !== boost) boost.value = String(state.boost);
     paintRange(boost);
     boostValue.textContent = state.boost;
     boostValue.parentElement.classList.toggle('hot', state.boost > 100);
     for (const chip of quick.children) chip.classList.toggle('on', Number(chip.dataset.boost) === state.boost);
 
     state.eq.forEach((db, i) => {
-      if (document.activeElement !== sliders[i] || Number(sliders[i].value) !== db) sliders[i].value = String(db);
+      if (Number(sliders[i].value) !== db) sliders[i].value = String(db);
       values[i].textContent = db > 0 ? `+${db}` : String(db);
       values[i].classList.toggle('on', db !== 0);
     });
 
     limiter.checked = state.limiter;
+    night.checked = state.night;
     mono.checked = state.mono;
-    balance.value = String(state.balance);
+    if (Number(balance.value) !== state.balance && document.activeElement !== balance) balance.value = String(state.balance);
     paintRange(balance);
+    balanceValue.textContent = state.balance === 0
+      ? t('center')
+      : `${t(state.balance < 0 ? 'left' : 'right')} ${Math.abs(state.balance)} %`;
     renderPresets();
     drawCurve();
   }
@@ -349,8 +426,29 @@ export async function initMixer(tab, settings) {
   setMax(settings.maxBoost);
   renderStatus();
 
+  // Apply what was remembered for this site when the tab isn't processed yet.
+  if (!active) {
+    const key = memoryKey();
+    const stored = key ? (await chrome.storage.local.get(key))[key] : null;
+    if (stored && !isNeutral(cleanState(stored))) {
+      Object.assign(state, cleanState(stored));
+      commit({ save: false });
+      toast(t(settings.rememberMixer === 'site' ? 'mixerRestoredSite' : 'mixerRestored', site || ''));
+    }
+  }
+
   return {
     setMax,
-    redraw: drawCurve
+    redraw: () => {
+      drawCurve();
+      spectrumLoop();
+    },
+    getBoost: () => state.boost,
+    setBoost(v) {
+      if (state.boost === v) return;
+      state.boost = v;
+      commit();
+    },
+    onChange: (fn) => listeners.add(fn)
   };
 }

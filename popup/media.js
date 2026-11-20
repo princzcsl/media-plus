@@ -1,16 +1,10 @@
-import { h, setIcon, toast, fmtTime, throttle, send } from './ui.js';
+import { h, setIcon, toast, fmtTime, parseTime, throttle, send, paintRange } from './ui.js';
 import { t } from '../shared/i18n.js';
+import { HOST_INSTALL_URL } from '../shared/settings.js';
 import { listMedia, runOp, captureFrame, bestSource, toggleTab, pickPrimary } from '../shared/tab.js';
 
 const SPEEDS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3];
 const POLL_MS = 1000;
-
-export function paintRange(input) {
-  const min = Number(input.min);
-  const max = Number(input.max);
-  const pct = max > min ? ((Number(input.value) - min) / (max - min)) * 100 : 0;
-  input.style.setProperty('--fill', `${pct}%`);
-}
 
 const ERRORS = {
   gone: 'errGone',
@@ -18,6 +12,7 @@ const ERRORS = {
   offscreen: 'errOffscreen',
   noFrame: 'errNoFrame',
   noVideo: 'errNoVideo',
+  noTracks: 'errNoTracks',
   NotAllowedError: 'errGesture',
   SecurityError: 'errProtected'
 };
@@ -40,7 +35,17 @@ async function copyImage(dataUrl) {
   await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
 }
 
-export function initMedia(tab, settings) {
+const segmented = (options, value, onChange) => {
+  const el = h('div', { class: 'segmented', role: 'radiogroup' });
+  const render = (v) => {
+    el.replaceChildren(...options.map(([key, label]) =>
+      h('button', { class: v === key ? 'on' : '', role: 'radio', 'aria-checked': String(v === key), onclick: () => { render(key); onChange(key); } }, label)));
+  };
+  render(value);
+  return el;
+};
+
+export function initMedia(tab, settings, mixer, host) {
   const listEl = document.getElementById('media-list');
   const othersEl = document.getElementById('others');
   const otherList = document.getElementById('other-list');
@@ -106,6 +111,8 @@ export function initMedia(tab, settings) {
     }
   }
 
+  mixer.onChange(() => { for (const card of cards.values()) card.update({}); });
+
   function createCard(initial) {
     let cur = initial;
     let seeking = false;
@@ -116,16 +123,14 @@ export function initMedia(tab, settings) {
       h('span', { class: 'eq-bars' }, h('i'), h('i'), h('i')));
     const title = h('div', { class: 'm-title' });
     const meta = h('div', { class: 'm-meta muted small' });
-    const head = h('div', {
-      class: 'm-head',
-      onclick: () => card.el.classList.toggle('open')
-    }, thumb, h('div', { class: 'm-info' }, title, meta),
-    h('span', { class: 'icon-btn ghost chevron', icon: 'chevron' }));
+    const head = h('div', { class: 'm-head', onclick: () => card.el.classList.toggle('open') },
+      thumb, h('div', { class: 'm-info' }, title, meta),
+      h('span', { class: 'icon-btn ghost chevron', icon: 'chevron' }));
 
     async function op(name, arg) {
       try {
         const info = await runOp(tab.id, cur.frameId, cur.id, name, arg);
-        if (info?.id) update({ ...cur, ...info, thumb: undefined });
+        if (info?.id) update({ ...info, thumb: undefined });
         return info;
       } catch (err) {
         toast(errorText(err), 'error');
@@ -147,14 +152,31 @@ export function initMedia(tab, settings) {
       seeking = false;
     });
 
-    // Volume, speed, loop
+    // Volume: 0-100 % is the media's own volume, above that the tab boost of the mixer.
     const muteBtn = h('button', { class: 'icon-btn ghost', title: t('mute'), onclick: () => op('mute', !cur.muted) });
     const sendVolume = throttle((v) => op('volume', v), 80);
-    const volume = h('input', { type: 'range', class: 'range', min: 0, max: 100, step: 1, 'aria-label': t('volume') });
+    const volume = h('input', { type: 'range', class: 'range', min: 0, max: settings.maxBoost, step: 1, 'aria-label': t('volume') });
+    const volValue = h('span', { class: 'vol-value' });
     volume.addEventListener('input', () => {
-      paintRange(volume);
-      sendVolume(volume.value / 100);
+      const v = Number(volume.value);
+      if (v <= 100) {
+        sendVolume(v / 100);
+        if (mixer.getBoost() !== 100) mixer.setBoost(100);
+      } else {
+        if (cur.volume < 1 || cur.muted) sendVolume(1);
+        mixer.setBoost(Math.round(v / 5) * 5);
+      }
+      renderVolume(v);
     });
+    volume.addEventListener('change', () => volume.blur());
+
+    function renderVolume(v) {
+      volume.max = String(settings.maxBoost);
+      paintRange(volume, 100);
+      volValue.textContent = `${Math.round(v)}%`;
+      volValue.classList.toggle('over', v > 100);
+    }
+
     const speed = h('select', { class: 'select compact', title: t('speed'), onchange: () => op('rate', Number(speed.value)) },
       SPEEDS.map((s) => h('option', { value: String(s) }, `${s}×`)));
     const loopBtn = h('button', { class: 'icon-btn', icon: 'loop', title: t('loop'), onclick: () => op('loop', !cur.loop) });
@@ -179,14 +201,21 @@ export function initMedia(tab, settings) {
     }
 
     function renderAB() {
-      abBtn.textContent = cur.ab ? 'A-B' : abStart != null ? 'A…' : 'A-B';
+      abBtn.textContent = abStart != null && !cur.ab ? 'A…' : 'A-B';
       abBtn.classList.toggle('on', !!cur.ab || abStart != null);
     }
 
-    // Actions
+    // Sheets (download options, detected streams)
     const sheet = h('div', { class: 'sheet', hidden: true });
-    const action = (icon, label, fn) => {
-      const btn = h('button', { class: 'icon-btn', icon, title: t(label), 'aria-label': t(label) });
+    let sheetKind = null;
+    const closeSheet = () => {
+      sheet.hidden = true;
+      sheetKind = null;
+      downloadBtn.classList.remove('open');
+    };
+
+    const action = (icon, label, fn, extra = {}) => {
+      const btn = h('button', { class: ['icon-btn', extra.class], icon, title: t(label), 'aria-label': t(label) }, extra.text);
       btn.addEventListener('click', async () => {
         btn.classList.add('busy');
         try {
@@ -201,10 +230,9 @@ export function initMedia(tab, settings) {
     };
 
     const downloadBtn = action('download', 'download', async () => {
-      const res = await send({ type: 'media:download', tabId: tab.id, frameId: cur.frameId, id: cur.id });
-      if (res.mse) showStreams(res, true);
-      else toast(t('downloadStarted'));
-    });
+      if (sheetKind === 'download') return closeSheet();
+      await openDownload();
+    }, { class: 'dl-btn', text: t('download') });
 
     const shotBtn = action('camera', 'screenshot', async () => {
       const shot = await captureFrame(tab, cur, settings.shotFormat);
@@ -217,75 +245,114 @@ export function initMedia(tab, settings) {
 
     const sourceBtn = action('external', 'openSource', async () => {
       const resolved = await runOp(tab.id, cur.frameId, cur.id, 'resolve');
-      if (resolved.type !== 'url' && (resolved.streams?.length || 0) > 1) return showStreams(resolved, false);
+      if (resolved.type !== 'url' && (resolved.streams?.length || 0) > 1) return showStreams(resolved);
       const url = bestSource(resolved);
       if (!url) return toast(t('noSource'), 'error');
       await chrome.tabs.create({ url, index: tab.index + 1, openerTabId: tab.id });
     });
 
     const pipBtn = action('pip', 'pip', () => op('pip'));
-
-    const recBtn = action('record', 'record', async () => {
-      if (cur.recording) {
-        await op('record', { stop: true });
-        toast(t('recordSaved'));
-      } else {
-        const info = await op('record', {});
-        if (info) toast(t('recordStarted'));
-      }
-    });
-
     const focusBtn = action('focus', 'showOnPage', () => op('focus'));
 
-    function showStreams(resolved, fromDownload) {
-      const streams = resolved.streams || [];
-      const rows = streams.slice(0, 8).map((s) =>
-        h('div', { class: 'stream' },
-          h('span', { class: 'stream-kind' }, s.kind === 'manifest' ? (s.url.includes('.mpd') ? 'MPD' : 'M3U8') : s.kind === 'audio' ? 'AUDIO' : 'VIDEO'),
-          h('span', { class: 'stream-url', title: s.url }, s.url.replace(/^https?:\/\//, '')),
-          h('button', {
-            class: 'icon-btn', icon: 'external', title: t('open'),
-            onclick: () => chrome.tabs.create({ url: s.url, index: tab.index + 1, openerTabId: tab.id })
-          }),
-          s.kind !== 'manifest' && h('button', {
-            class: 'icon-btn', icon: 'download', title: t('download'),
-            onclick: async () => {
-              const res = await send({ type: 'download', url: s.url, kind: s.kind, title: resolved.title, tabId: tab.id, pageUrl: tab.url })
-                .catch((err) => ({ error: err.message }));
-              toast(res.error ? errorText(new Error(res.error)) : t('downloadStarted'), res.error ? 'error' : 'info');
-            }
-          })));
+    // Download options: format, whole or extract, and how it will be fetched.
+    async function openDownload() {
+      const resolved = await runOp(tab.id, cur.frameId, cur.id, 'resolve');
+      const opts = {
+        format: cur.kind === 'audio' ? 'mp3' : 'mp4',
+        part: cur.ab ? 'extract' : 'whole',
+        start: cur.ab ? cur.ab.a : Math.max(0, cur.time - 0),
+        end: cur.ab ? cur.ab.b : Math.min(cur.duration > 0 ? cur.duration : cur.time + 30, cur.time + 30)
+      };
+
+      const via = h('div', { class: 'via small muted' });
+      const startInput = h('input', { class: 'input time', value: fmtTime(opts.start), 'aria-label': t('from') });
+      const endInput = h('input', { class: 'input time', value: fmtTime(opts.end), 'aria-label': t('to') });
+      const readTimes = () => {
+        const s = parseTime(startInput.value);
+        const e = parseTime(endInput.value);
+        if (s != null) opts.start = s;
+        if (e != null) opts.end = e;
+      };
+      startInput.addEventListener('change', readTimes);
+      endInput.addEventListener('change', readTimes);
+      const here = (input, key) => h('button', {
+        class: 'icon-btn ghost', icon: 'focus', iconSize: 14, title: t('currentPosition'),
+        onclick: () => { opts[key] = cur.time; input.value = fmtTime(cur.time); }
+      });
+      const extractRow = h('div', { class: 'range-row', hidden: opts.part !== 'extract' },
+        h('span', { class: 'small muted' }, t('from')), startInput, here(startInput, 'start'),
+        h('span', { class: 'small muted' }, t('to')), endInput, here(endInput, 'end'));
+
+      const willBrowser = () => resolved.type === 'url' && opts.format === 'mp4' && opts.part === 'whole';
+      const willHost = () => !willBrowser() && settings.engine !== 'browser' && host.installed;
+      function renderVia() {
+        if (willBrowser()) via.replaceChildren(t('viaBrowser'));
+        else if (willHost()) via.replaceChildren(t('viaYtdlp'));
+        else {
+          via.replaceChildren(t(opts.format === 'mp3' ? 'viaRecordAudio' : 'viaRecord'));
+          if (!host.installed && settings.engine !== 'browser') {
+            via.append(' ', h('a', { href: HOST_INSTALL_URL, target: '_blank' }, t('installYtdlp')));
+          }
+        }
+      }
 
       sheet.replaceChildren(
-        h('p', { class: 'small muted' }, t(fromDownload ? 'mseDownload' : 'mseSource')),
-        h('div', { class: 'row' },
-          h('button', {
-            class: 'button primary', icon: 'record', iconSize: 14,
-            onclick: async () => {
-              sheet.hidden = true;
-              if (await op('record', { fromStart: true })) toast(t('recordStarted'));
-            }
-          }, t('recordFromStart')),
-          h('button', {
-            class: 'button', icon: 'record', iconSize: 14,
-            onclick: async () => {
-              sheet.hidden = true;
-              if (await op('record', {})) toast(t('recordStarted'));
-            }
-          }, t('recordNow')),
-          h('button', { class: 'icon-btn ghost', icon: 'close', title: t('close'), onclick: () => { sheet.hidden = true; } })),
-        streams.length
-          ? h('div', {}, h('div', { class: 'section-title' }, t('detectedStreams')), rows)
-          : h('p', { class: 'small muted' }, t('noStreams'))
+        segmented([['mp4', t('formatVideo')], ['mp3', t('formatAudio')]], opts.format, (v) => { opts.format = v; renderVia(); }),
+        segmented([['whole', t('partWhole')], ['extract', t('partExtract')]], opts.part, (v) => {
+          opts.part = v;
+          extractRow.hidden = v !== 'extract';
+          renderVia();
+        }),
+        extractRow,
+        via,
+        h('button', {
+          class: 'button primary wide', icon: 'download', iconSize: 15,
+          onclick: async () => {
+            readTimes();
+            const section = opts.part === 'extract';
+            if (section && !(opts.end > opts.start)) return toast(t('abTooShort'), 'error');
+            const res = await send({
+              type: 'media:download', tabId: tab.id, frameId: cur.frameId, id: cur.id,
+              format: opts.format, start: section ? opts.start : null, end: section ? opts.end : null
+            }).catch((err) => ({ error: err.message }));
+            if (res.error) return toast(errorText(new Error(res.error)), 'error');
+            closeSheet();
+            toast(t(res.via === 'record' ? 'recordStarted' : res.via === 'ytdlp' ? 'ytdlpStarted' : 'downloadStarted'));
+          }
+        }, t('download'))
       );
+      renderVia();
+      sheetKind = 'download';
       sheet.hidden = false;
+      downloadBtn.classList.add('open');
+      card.el.classList.add('open');
+    }
+
+    function showStreams(resolved) {
+      const streams = resolved.streams || [];
+      sheet.replaceChildren(
+        h('div', { class: 'row space' },
+          h('span', { class: 'small muted' }, t('mseSource')),
+          h('button', { class: 'icon-btn ghost', icon: 'close', iconSize: 14, title: t('close'), onclick: closeSheet })),
+        ...(streams.length ? streams.slice(0, 8).map((s) =>
+          h('div', { class: 'stream' },
+            h('span', { class: 'stream-kind' }, s.kind === 'manifest' ? (s.url.includes('.mpd') ? 'MPD' : 'M3U8') : s.kind === 'audio' ? 'AUDIO' : 'VIDEO'),
+            h('span', { class: 'stream-url', title: s.url }, s.url.replace(/^https?:\/\//, '')),
+            h('button', {
+              class: 'icon-btn', icon: 'external', iconSize: 14, title: t('open'),
+              onclick: () => chrome.tabs.create({ url: s.url, index: tab.index + 1, openerTabId: tab.id })
+            }))) : [h('p', { class: 'small muted' }, t('noStreams'))])
+      );
+      sheetKind = 'streams';
+      sheet.hidden = false;
+      downloadBtn.classList.remove('open');
       card.el.classList.add('open');
     }
 
     const body = h('div', { class: 'm-body' },
       h('div', { class: 'm-row' }, playBtn, seek, timeEl),
-      h('div', { class: 'm-row' }, muteBtn, volume, speed, loopBtn, abBtn),
-      h('div', { class: 'm-actions' }, downloadBtn, shotBtn, sourceBtn, pipBtn, recBtn, focusBtn),
+      h('div', { class: 'm-row' }, muteBtn, volume, volValue, speed, loopBtn, abBtn),
+      h('div', { class: 'm-actions' }, downloadBtn, shotBtn, sourceBtn, pipBtn, focusBtn),
       sheet);
 
     card.el = h('article', { class: 'media' }, head, body);
@@ -320,8 +387,10 @@ export function initMedia(tab, settings) {
 
       setIcon(muteBtn, cur.muted || cur.volume === 0 ? 'volumeOff' : 'volume', 18);
       if (document.activeElement !== volume) {
-        volume.value = Math.round(cur.volume * 100);
-        paintRange(volume);
+        const boost = mixer.getBoost();
+        const v = cur.volume >= 0.995 && boost !== 100 ? boost : Math.round(cur.volume * 100);
+        volume.value = String(v);
+        renderVolume(v);
       }
 
       const rate = String(cur.rate);
@@ -334,13 +403,58 @@ export function initMedia(tab, settings) {
       const isVideo = cur.kind === 'video';
       pipBtn.disabled = !isVideo;
       shotBtn.disabled = !isVideo;
-      recBtn.classList.toggle('rec', !!cur.recording);
-      setIcon(recBtn, cur.recording ? 'stop' : 'record', 18);
-      recBtn.title = t(cur.recording ? 'recordStop' : 'record');
     }
 
     return card;
   }
+
+  // ---- yt-dlp downloads in progress ----
+
+  const jobsEl = document.getElementById('jobs');
+
+  function renderJobs(jobs = []) {
+    jobsEl.hidden = !jobs.length;
+    jobsEl.replaceChildren(...jobs.map((job) => {
+      let info;
+      if (job.status === 'error') info = job.error;
+      else if (job.status === 'done') info = t(job.canceled ? 'jobCanceled' : 'jobDone');
+      else if (job.status === 'saving') info = t('jobSaving');
+      else if (job.stage) info = t('jobProcessing');
+      else info = [`${Math.round(job.pct || 0)} %`, job.speed, job.eta && job.eta !== 'NA' ? job.eta : ''].filter(Boolean).join(' · ');
+
+      const buttons = [];
+      if (job.status === 'error' && job.tabId === tab.id) {
+        buttons.push(h('button', {
+          class: 'icon-btn ghost', icon: 'record', iconSize: 14, title: t('recordInstead'),
+          onclick: async () => {
+            const res = await send({ type: 'media:download', tabId: job.tabId, frameId: job.frameId, id: job.mediaId, format: job.format, start: job.start, end: job.end, forceRecord: true })
+              .catch((err) => ({ error: err.message }));
+            if (res.error) return toast(errorText(new Error(res.error)), 'error');
+            await send({ type: 'job:dismiss', id: job.id });
+            toast(t('recordStarted'));
+          }
+        }));
+      }
+      buttons.push(h('button', {
+        class: 'icon-btn ghost', icon: 'close', iconSize: 14,
+        title: t(job.status === 'running' ? 'cancel' : 'close'),
+        onclick: () => send({ type: job.status === 'running' || job.status === 'saving' ? 'job:cancel' : 'job:dismiss', id: job.id })
+      }));
+
+      return h('div', { class: ['job', job.status] },
+        h('div', { class: 'job-head' },
+          h('span', { class: 'stream-kind' }, job.format === 'mp3' ? 'MP3' : 'MP4'),
+          h('span', { class: 'job-title', title: job.title }, job.title),
+          buttons),
+        h('div', { class: 'job-bar' }, h('i', { style: `width:${job.status === 'error' ? 100 : Math.max(2, job.pct || 0)}%` })),
+        h('div', { class: 'job-info small muted' }, info));
+    }));
+  }
+
+  chrome.storage.session.get('jobs').then(({ jobs }) => renderJobs(jobs));
+  chrome.storage.session.onChanged.addListener((changes) => {
+    if (changes.jobs) renderJobs(changes.jobs.newValue);
+  });
 
   // ---- Other tabs playing sound ----
 
@@ -348,16 +462,16 @@ export function initMedia(tab, settings) {
     const tabs = (await chrome.tabs.query({})).filter((x) => x.id !== tab.id && (x.audible || x.mutedInfo?.muted));
     othersEl.hidden = !tabs.length;
     otherList.replaceChildren(...tabs.map((x) => {
-      let host = '';
-      try { host = new URL(x.url).hostname.replace(/^www\./, ''); } catch { /* no url access */ }
+      let siteName = '';
+      try { siteName = new URL(x.url).hostname.replace(/^www\./, ''); } catch { /* no url access */ }
       const muted = !!x.mutedInfo?.muted;
       return h('div', { class: 'other' },
         x.favIconUrl && /^(https?|data):/.test(x.favIconUrl)
           ? h('img', { src: x.favIconUrl, alt: '' })
           : h('span', { class: 'muted', icon: 'music', iconSize: 18 }),
         h('div', { class: 'other-info' },
-          h('div', { class: 'other-title', title: x.title }, x.title || host),
-          h('div', { class: 'small muted' }, host)),
+          h('div', { class: 'other-title', title: x.title }, x.title || siteName),
+          h('div', { class: 'small muted' }, siteName)),
         h('button', {
           class: 'icon-btn ghost', icon: x.audible ? 'pause' : 'play', iconSize: 15, title: t('playPause'),
           onclick: async () => {
@@ -403,4 +517,3 @@ export function initMedia(tab, settings) {
   loop();
   addEventListener('pagehide', () => clearTimeout(timer));
 }
-

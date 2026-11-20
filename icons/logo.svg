@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2a1d6e"/>
+      <stop offset="0.55" stop-color="#4a1f7a"/>
+      <stop offset="1" stop-color="#140f36"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.45" r="0.55">
+      <stop offset="0" stop-color="#ff9be8" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#ff9be8" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e9dcff"/>
+      <stop offset="0.55" stop-color="#b79bff"/>
+      <stop offset="1" stop-color="#8b6cff"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffe7a3"/>
+      <stop offset="1" stop-color="#e0a83a"/>
+    </linearGradient>
+    <linearGradient id="band" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a2a7a"/>
+      <stop offset="1" stop-color="#1c1440"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.7"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.05"/>
+    </linearGradient>
+  </defs>
+  <rect x="48" y="48" width="928" height="928" rx="220" fill="url(#bg)"/>
+  <rect x="48" y="48" width="928" height="928" rx="220" fill="url(#glow)"/>
+  <!-- sound waves -->
+  <g fill="none" stroke="#7fe3ff" stroke-linecap="round" stroke-opacity="0.55" stroke-width="22">
+    <path d="M196 430 Q 160 545 196 660"/>
+    <path d="M136 380 Q 84 545 136 710" stroke-opacity="0.3"/>
+    <path d="M828 430 Q 864 545 828 660"/>
+    <path d="M888 380 Q 940 545 888 710" stroke-opacity="0.3"/>
+  </g>
+  <!-- body -->
+  <path d="M512 300 C 690 300, 760 420, 760 560 C 760 700, 650 790, 512 790 C 374 790, 264 700, 264 560 C 264 420, 334 300, 512 300 Z" fill="url(#body)"/>
+  <path d="M360 420 C 400 350, 470 330, 520 332 C 450 360, 400 400, 380 470 Z" fill="#ffffff" fill-opacity="0.55"/>
+  <!-- headphones -->
+  <path d="M300 520 C 300 330, 724 330, 724 520" fill="none" stroke="url(#band)" stroke-width="44" stroke-linecap="round"/>
+  <path d="M300 520 C 300 330, 724 330, 724 520" fill="none" stroke="#ffffff" stroke-opacity="0.18" stroke-width="10" stroke-linecap="round"/>
+  <rect x="226" y="470" width="104" height="170" rx="46" fill="url(#gold)"/>
+  <rect x="694" y="470" width="104" height="170" rx="46" fill="url(#gold)"/>
+  <rect x="252" y="500" width="40" height="110" rx="20" fill="#fff3c4" fill-opacity="0.55"/>
+  <rect x="732" y="500" width="40" height="110" rx="20" fill="#fff3c4" fill-opacity="0.55"/>
+  <!-- happy closed eyes -->
+  <path d="M398 580 Q 430 540 462 580" fill="none" stroke="#1a1440" stroke-width="20" stroke-linecap="round"/>
+  <path d="M562 580 Q 594 540 626 580" fill="none" stroke="#1a1440" stroke-width="20" stroke-linecap="round"/>
+  <ellipse cx="392" cy="650" rx="36" ry="19" fill="#ff7fb3" fill-opacity="0.65"/>
+  <ellipse cx="632" cy="650" rx="36" ry="19" fill="#ff7fb3" fill-opacity="0.65"/>
+  <path d="M480 650 Q 512 690 544 650" fill="none" stroke="#1a1440" stroke-width="14" stroke-linecap="round"/>
+  <!-- play gem -->
+  <path d="M492 404 L 548 438 L 492 472 Z" fill="#ffd25a" stroke="#fff3c4" stroke-width="10" stroke-linejoin="round"/>
+  <!-- music note -->
+  <g fill="#7fe3ff">
+    <path d="M770 190 L 770 300" stroke="#7fe3ff" stroke-width="18" stroke-linecap="round"/>
+    <path d="M770 190 Q 830 200 850 250" fill="none" stroke="#7fe3ff" stroke-width="18" stroke-linecap="round"/>
+    <ellipse cx="746" cy="304" rx="34" ry="26" transform="rotate(-20 746 304)"/>
+  </g>
+  <rect x="56" y="56" width="912" height="912" rx="212" fill="none" stroke="url(#rim)" stroke-width="8"/>
+</svg>

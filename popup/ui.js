@@ -60,6 +60,23 @@ export function toast(message, kind = 'info') {
   toastTimer = setTimeout(() => { el.className = 'toast'; }, 2600);
 }
 
+export function paintRange(input, split = null) {
+  const min = Number(input.min);
+  const max = Number(input.max);
+  const pct = (v) => (max > min ? ((v - min) / (max - min)) * 100 : 0);
+  input.style.setProperty('--fill', `${pct(Number(input.value))}%`);
+  const over = split != null && Number(input.value) > split;
+  input.classList.toggle('over', over);
+  if (over) input.style.setProperty('--split', `${pct(split)}%`);
+}
+
+// "1:23", "1:02:03" or plain seconds → seconds; null when unreadable.
+export function parseTime(text) {
+  const parts = String(text).trim().split(':').map(Number);
+  if (!parts.length || parts.some((n) => !Number.isFinite(n) || n < 0)) return null;
+  return parts.reduce((acc, n) => acc * 60 + n, 0);
+}
+
 export function fmtTime(sec) {
   if (sec < 0) return 'LIVE';
   const s = Math.max(0, Math.floor(sec || 0));
