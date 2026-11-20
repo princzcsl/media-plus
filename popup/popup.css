@@ -573,7 +573,21 @@ label.item { cursor: pointer; }
 .item.stacked { flex-direction: column; align-items: stretch; gap: 8px; }
 .m-spacer { flex: 1; }
 
-.bass-mode { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 12px 6px 2px; padding-top: 10px; border-top: 0.5px solid var(--hairline); }
-.bass-mode .segmented { flex-shrink: 0; width: 170px; }
-.bass-mode .small { display: block; margin-top: 1px; }
-.trials-help { margin: -4px 2px 8px; line-height: 1.4; }
+
+/* Shape of the lowest band, under "60" */
+.shape-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 20px;
+  margin-top: 2px;
+  padding: 0;
+  color: var(--muted);
+  background: var(--surface-2);
+  border: 0;
+  border-radius: 99px;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.shape-btn:hover { color: var(--text); background: var(--surface-3); }
+.shape-btn.on, .shape-btn.on:hover { color: #fff; background: var(--accent); }

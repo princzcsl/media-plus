@@ -39,6 +39,7 @@ static class Host
     static string root;
     static string ytdlp = "yt-dlp";
     static string ffmpeg = "";
+    static string ytdlpVersion = null;
     static int port;
 
     static void Main()
@@ -128,6 +129,7 @@ static class Host
         Dictionary<string, object> cfg = Json.Deserialize<Dictionary<string, object>>(System.IO.File.ReadAllText(file));
         ytdlp = Str(cfg, "ytdlp") ?? ytdlp;
         ffmpeg = Str(cfg, "ffmpeg") ?? "";
+        ytdlpVersion = Str(cfg, "ytdlpVersion");
     }
 
     static void Handle(Dictionary<string, object> msg)
@@ -136,8 +138,9 @@ static class Host
         string id = Str(msg, "id");
         if (cmd == "ping")
         {
-            Send(Obj("type", "pong", "id", id, "version", Version, "ytdlp", RunVersion(ytdlp, "--version"),
-                "ffmpeg", ffmpeg != "" && System.IO.File.Exists(ffmpeg)));
+            // Answer at once: a cold yt-dlp.exe can take seconds to start, too slow for a status check.
+            Send(Obj("type", "pong", "id", id, "version", Version, "ytdlp", ytdlpVersion,
+                "ytdlpFound", System.IO.File.Exists(ytdlp), "ffmpeg", ffmpeg != "" && System.IO.File.Exists(ffmpeg)));
         }
         else if (cmd == "download")
         {
@@ -165,26 +168,6 @@ static class Host
             Job j;
             return id != null && Jobs.TryGetValue(id, out j) ? j : null;
         }
-    }
-
-    static string RunVersion(string exe, string arg)
-    {
-        try
-        {
-            ProcessStartInfo psi = new ProcessStartInfo(exe, arg);
-            psi.UseShellExecute = false;
-            psi.RedirectStandardInput = true;
-            psi.RedirectStandardOutput = true;
-            psi.CreateNoWindow = true;
-            using (Process p = Process.Start(psi))
-            {
-                p.StandardInput.Close();
-                string v = p.StandardOutput.ReadToEnd().Trim();
-                p.WaitForExit(8000);
-                return v;
-            }
-        }
-        catch { return null; }
     }
 
     static void StartDownload(Dictionary<string, object> msg)

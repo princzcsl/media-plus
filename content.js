@@ -2,7 +2,8 @@
 // a shortcut or the context menu asks for it through chrome.scripting.
 (() => {
   'use strict';
-  if (globalThis.__mediaPlus) return;
+  const VERSION = chrome.runtime.getManifest().version;
+  if (globalThis.__mediaPlus?.version === VERSION) return;
 
   const STREAM_RE = /\.(m3u8|mpd|mp4|m4v|m4s|m4a|webm|mov|mkv|ts|mp3|aac|ogg|oga|opus|flac|wav)(?:[?#]|$)|videoplayback|[?&]mime=(?:video|audio)/i;
   const MANIFEST_RE = /\.(m3u8|mpd)(?:[?#]|$)/i;
@@ -429,6 +430,7 @@
   }, true);
 
   globalThis.__mediaPlus = {
+    version: VERSION,
     list({ deep = false, thumbs: withThumbs = false } = {}) {
       return { media: findMedia(deep).map((el) => describe(el, withThumbs)) };
     },

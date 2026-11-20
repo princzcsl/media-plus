@@ -21,9 +21,9 @@ A Chrome extension to control the media playing in your browser, from one popup:
 **Mixer** (whole tab)
 - Volume boost up to 600 %
 - 8-band equalizer (60 Hz → 15 kHz, ±14 dB) with a live spectrum; the curve goes exactly through the slider values and can be dragged
-- Presets: Flat, Bass, Bass+, Voice, Movie, Music, Clarity, PC speakers, Night, plus your own
+- Presets: Flat, Bass, Bass+, Harman, Voice, Movie, Music, Clarity, PC speakers, Night, plus your own
 - Effects: bass enhancer, normalizer, karaoke / voice only (spectral), pitch without changing the speed
-- Bass engine: classic, or beta (70 Hz bell, sub rumble cut, bass band compressed on its own)
+- Lowest band as a shelf (even lift) or a bell (punch at 70 Hz, sub rumble cut, bass band compressed on its own)
 - Anti-distortion (headroom + look-ahead limiter), night mode (evens out quiet and loud parts), mono, balance
 - Settings remembered per site or everywhere, applied when you open Media+ on the tab
 

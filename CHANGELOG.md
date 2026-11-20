@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.4.0
+- The yt-dlp companion answers its status check at once (a cold yt-dlp could take seconds and look "not installed"); the settings say why when it isn't found. Run `host/install.cmd` again to update it
+- Tabs opened before an update get the new page agent automatically, and the timeline never steps back
+- Bass: a button under the 60 Hz band switches its shape between shelf and bell; the bell is wider and gentler
+- Presets: Harman added (shelf), Bass and Bass+ use the bell; the VLC trial presets are gone
+- No default download subfolder
+
 ## 1.3.1
 - Timeline: positions are time-stamped and small differences eased in, so it no longer steps back at each refresh
 - Weaker magnet on the volume slider

@@ -102,16 +102,16 @@ function releaseIfIdle() {
 
 async function hostInfo(force = false) {
   const { host } = await chrome.storage.session.get('host');
-  if (!force && host && Date.now() - host.at < 60_000) return host;
+  if (!force && host?.installed && Date.now() - host.at < 60_000) return host;
   let info;
   try {
     const p = hostPort();
     const pong = await new Promise((resolve, reject) => {
       pings.push({ resolve, reject });
       p.postMessage({ cmd: 'ping', id: 'ping' });
-      setTimeout(() => reject(new Error('timeout')), 6000);
+      setTimeout(() => reject(new Error('timeout')), 15000);
     });
-    info = { installed: true, ytdlp: pong.ytdlp, ffmpeg: pong.ffmpeg, at: Date.now() };
+    info = { installed: pong.ytdlpFound !== false, ytdlp: pong.ytdlp, ffmpeg: pong.ffmpeg, at: Date.now(), error: pong.ytdlpFound === false ? 'ytdlp-missing' : null };
   } catch (err) {
     info = { installed: false, error: err.message, at: Date.now() };
   }

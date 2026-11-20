@@ -23,7 +23,7 @@ function gaussSolve(matrix, vector) {
   return a.map((row, i) => (row[i] ? row[n] / row[i] : 0));
 }
 
-export function createEq(sampleRate = 48000, bass = 'classic') {
+export function createEq(sampleRate = 48000, bass = 'shelf') {
   const ctx = new OfflineAudioContext(1, 1, sampleRate);
   const filters = BANDS.map((_, i) => {
     const spec = bandSpec(i, bass);

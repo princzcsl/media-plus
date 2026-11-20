@@ -5,14 +5,19 @@ async function execAll(tabId, func, args = []) {
   return chrome.scripting.executeScript({ target: { tabId, allFrames: true }, func, args });
 }
 
-const listFn = (opts) => globalThis.__mediaPlus?.list(opts) ?? null;
+// Frames running an older agent (tab opened before an update) answer null and get the new one.
+const listFn = (opts, version) => (globalThis.__mediaPlus?.version === version ? globalThis.__mediaPlus.list(opts) : null);
+const VERSION = chrome.runtime.getManifest().version;
+// Injection is tried once per tab: frames that refuse scripts (sandboxed) would otherwise retry at every poll.
+const injected = new Set();
 
 export async function listMedia(tabId, opts = {}) {
-  let results = await execAll(tabId, listFn, [opts]);
-  if (results.some((r) => r.result == null)) {
+  let results = await execAll(tabId, listFn, [opts, VERSION]);
+  if (results.some((r) => r.result == null) && !injected.has(tabId)) {
+    injected.add(tabId);
     // Tabs opened before the extension was installed or updated.
     await chrome.scripting.executeScript({ target: { tabId, allFrames: true }, files: ['content.js'] }).catch(() => {});
-    results = await execAll(tabId, listFn, [opts]);
+    results = await execAll(tabId, listFn, [opts, VERSION]);
   }
   return results
     .filter((r) => r.result)

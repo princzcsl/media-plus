@@ -51,7 +51,11 @@ export async function initPrefs(settings, host, hostReady, onChange) {
       status.textContent = `yt-dlp ${host.ytdlp || '?'} · ffmpeg ${host.ffmpeg ? '✓' : '✗'}`;
       hostAction.textContent = t('hostCheck');
     } else {
-      status.textContent = t('hostMissing');
+      const err = String(host.error || '');
+      status.textContent = t(/forbidden/i.test(err) ? 'hostWrongId'
+        : err === 'ytdlp-missing' ? 'hostNoYtdlp'
+          : err === 'timeout' ? 'hostTimeout'
+            : 'hostMissing');
       hostAction.textContent = t('hostInstall');
     }
   }
@@ -62,7 +66,7 @@ export async function initPrefs(settings, host, hostReady, onChange) {
     }
     host.checked = false;
     renderHost();
-    const info = await send({ type: 'host:info', force: true }).catch(() => ({ installed: false }));
+    const info = await chrome.runtime.sendMessage({ type: 'host:info', force: true }).catch((err) => ({ installed: false, error: err.message }));
     Object.assign(host, info, { checked: true });
     renderHost();
     toast(t(host.installed ? 'hostOk' : 'hostMissing'), host.installed ? 'info' : 'error');

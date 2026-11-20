@@ -230,6 +230,12 @@
   "preset_bassPlus": {
     "message": "Bass+"
   },
+  "preset_harman": {
+    "message": "Harman"
+  },
+  "presetHelp_harman": {
+    "message": "Bass of the Harman target, the audiophile reference for headphones"
+  },
   "preset_vocal": {
     "message": "Voice"
   },
@@ -323,50 +329,14 @@
   "effects": {
     "message": "Effects"
   },
-  "bassTrials": {
-    "message": "Bass presets to try"
+  "bassShape": {
+    "message": "60 Hz band shape"
   },
-  "bassTrialsHelp": {
-    "message": "From known references, to compare. Tell which ones to keep."
+  "bassShelf": {
+    "message": "shelf, even lift"
   },
-  "trialSourceVlc": {
-    "message": "VLC preset (from Winamp)"
-  },
-  "trialSourceHarman": {
-    "message": "Bass of the Harman headphone target, the audiophile reference"
-  },
-  "trial_harman": {
-    "message": "Harman"
-  },
-  "trial_vlcFullBass": {
-    "message": "VLC Full Bass"
-  },
-  "trial_vlcDance": {
-    "message": "VLC Dance"
-  },
-  "trial_vlcTechno": {
-    "message": "VLC Techno"
-  },
-  "trial_vlcParty": {
-    "message": "VLC Party"
-  },
-  "trial_vlcLargeHall": {
-    "message": "VLC Large Hall"
-  },
-  "trial_vlcBassTreble": {
-    "message": "VLC Bass & Treble"
-  },
-  "bassMode": {
-    "message": "Bass engine"
-  },
-  "bassModeHelp": {
-    "message": "Beta: punchier bell at 70 Hz, sub rumble cut, bass kept tight"
-  },
-  "bassClassic": {
-    "message": "Classic"
-  },
-  "bassBeta": {
-    "message": "Beta"
+  "bassBell": {
+    "message": "bell, punch"
   },
   "off": {
     "message": "Off"
@@ -446,6 +416,9 @@
   "subfolderHelp": {
     "message": "Inside Downloads, empty for none"
   },
+  "subfolderNone": {
+    "message": "None"
+  },
   "naming": {
     "message": "File names"
   },
@@ -456,10 +429,19 @@
     "message": "Checking…"
   },
   "hostMissing": {
-    "message": "Not installed: MP3, extracts and YouTube in high quality need it"
+    "message": "Chrome can't run yt-dlp by itself, even if it's on your PC: install the small companion once (host\\install.cmd)"
   },
   "hostInstall": {
     "message": "Install"
+  },
+  "hostWrongId": {
+    "message": "Installed for another copy of the extension: run host\\install.cmd again"
+  },
+  "hostNoYtdlp": {
+    "message": "The companion is there but yt-dlp moved: run host\\install.cmd again"
+  },
+  "hostTimeout": {
+    "message": "The companion did not answer, try Check again"
   },
   "hostCheck": {
     "message": "Check"

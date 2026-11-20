@@ -9,14 +9,15 @@ export const bandType = (i) => (i === 0 ? 'lowshelf' : i === BANDS.length - 1 ? 
 // (almost) the full gain instead of half of it.
 export const bandCorner = (i) => (i === 0 ? 95 : i === BANDS.length - 1 ? 12500 : BANDS[i]);
 
-// Filter of each band. The beta bass engine uses a bell at 70 Hz for the lowest band
-// instead of a shelf, so the boost stays on the punch and doesn't pile up in the sub-bass.
-export function bandSpec(i, bass = 'classic') {
-  if (i === 0 && bass === 'beta') return { type: 'peaking', freq: 70, Q: 0.55 };
+// Filter of each band. The lowest band is a shelf (even lift of everything below, like the
+// Harman target) or a wide bell at 70 Hz (punch, without piling up sub-bass; comes with a
+// rumble filter and its own gentle compressor in the engine).
+export function bandSpec(i, bass = 'shelf') {
+  if (i === 0 && bass === 'bell') return { type: 'peaking', freq: 70, Q: 0.42 };
   return { type: bandType(i), freq: bandCorner(i), Q: BAND_Q };
 }
 
-export const BASS_MODES = ['classic', 'beta'];
+export const BASS_SHAPES = ['shelf', 'bell'];
 
 export const bandLabel = (f) => (f >= 1000 ? `${f / 1000}k` : String(f));
 
@@ -33,7 +34,7 @@ export const NEUTRAL = Object.freeze({
   normalize: false,
   vocal: 'off',
   pitch: 0,
-  bass: 'classic'
+  bass: 'shelf'
 });
 
 export const freshState = () => ({ ...NEUTRAL, eq: [...NEUTRAL.eq] });
@@ -58,7 +59,7 @@ export function cleanState(s) {
     normalize: !!s.normalize,
     vocal: ['remove', 'isolate'].includes(s.vocal) ? s.vocal : 'off',
     pitch: num(s.pitch, 0, -PITCH_RANGE, PITCH_RANGE),
-    bass: s.bass === 'beta' ? 'beta' : 'classic'
+    bass: s.bass === 'bell' || s.bass === 'beta' ? 'bell' : 'shelf'
   };
 }
 
@@ -83,8 +84,10 @@ export const clampDb = (g) => Math.max(-EQ_RANGE, Math.min(EQ_RANGE, g));
 // voice lifts the 1-5 kHz presence, small speakers get their bass at 150 Hz, not below.
 export const PRESETS = [
   { id: 'flat', eq: [0, 0, 0, 0, 0, 0, 0, 0] },
-  { id: 'bass', eq: [7, 4, -1.5, 0, 0, 0, 0, 0], enhancer: 20 },
-  { id: 'bassPlus', eq: [10, 5, -2.5, 0, 0, 1, 1, 0] },
+  { id: 'bass', eq: [7, 4, -1.5, 0, 0, 0, 0, 0], enhancer: 20, bass: 'bell' },
+  { id: 'bassPlus', eq: [10, 5, -2.5, 0, 0, 1, 1, 0], bass: 'bell' },
+  // Bass of the Harman headphone target: +6 dB shelf at 105 Hz.
+  { id: 'harman', eq: [5.5, 1.5, 0, 0, 0, 0, 0, 0], bass: 'shelf' },
   { id: 'vocal', eq: [-6, -3, -1, 2, 4, 3, 1, 0] },
   { id: 'movie', eq: [5, 2, -1, 0, 2, 2, 1, 1], enhancer: 15 },
   { id: 'music', eq: [4, 2, -1, -1, 0, 2, 3, 3] },
@@ -93,19 +96,7 @@ export const PRESETS = [
   { id: 'night', eq: [-6, -3, 0, 1, 3, 2, 0, -1], night: true }
 ];
 
-// Bass presets to try out, from known sources, resampled to the 8 bands:
-// the Harman headphone target's bass shelf (+6 dB at 105 Hz), and VLC's presets
-// (the ones Winamp made popular).
-export const BASS_TRIALS = [
-  { id: 'harman', source: 'harman', eq: [5.5, 1.5, 0, 0, 0, 0, 0, 0] },
-  { id: 'vlcFullBass', source: 'vlc', eq: [-8, 7.5, 8, 1.5, -3, -8, -10, -11] },
-  { id: 'vlcDance', source: 'vlc', eq: [9.5, 7.5, 1.5, 0, -4.5, -7, -7, 0] },
-  { id: 'vlcTechno', source: 'vlc', eq: [8, 6, -2, -5, -1, 8, 9, 9] },
-  { id: 'vlcParty', source: 'vlc', eq: [7, 7, 0, 0, 0, 0, 0, 7] },
-  { id: 'vlcLargeHall', source: 'vlc', eq: [10.5, 10.5, 5.5, 0, -4, -5, -5, 0] },
-  { id: 'vlcBassTreble', source: 'vlc', eq: [7, 6, -3, -5, 0.5, 8, 10.5, 12] }
-];
-
 export const sameEq = (a, b) => a.length === b.length && a.every((g, i) => g === b[i]);
 
-export const matchesPreset = (s, p) => sameEq(s.eq, p.eq) && !!p.night === s.night && (p.enhancer || 0) === s.enhancer;
+export const matchesPreset = (s, p) =>
+  sameEq(s.eq, p.eq) && !!p.night === s.night && (p.enhancer || 0) === s.enhancer && (p.bass || 'shelf') === s.bass;

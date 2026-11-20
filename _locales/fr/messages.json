@@ -230,6 +230,12 @@
   "preset_bassPlus": {
     "message": "Basses+"
   },
+  "preset_harman": {
+    "message": "Harman"
+  },
+  "presetHelp_harman": {
+    "message": "Basses de la courbe Harman, la référence des audiophiles pour les casques"
+  },
   "preset_vocal": {
     "message": "Voix"
   },
@@ -323,50 +329,14 @@
   "effects": {
     "message": "Effets"
   },
-  "bassTrials": {
-    "message": "Presets basses à tester"
+  "bassShape": {
+    "message": "Forme de la bande 60 Hz"
   },
-  "bassTrialsHelp": {
-    "message": "Issus de références connues, pour comparer. Dis-moi lesquels garder."
+  "bassShelf": {
+    "message": "pente, hausse régulière"
   },
-  "trialSourceVlc": {
-    "message": "Preset de VLC (repris de Winamp)"
-  },
-  "trialSourceHarman": {
-    "message": "Basses de la courbe cible Harman, la référence des audiophiles pour les casques"
-  },
-  "trial_harman": {
-    "message": "Harman"
-  },
-  "trial_vlcFullBass": {
-    "message": "VLC Full Bass"
-  },
-  "trial_vlcDance": {
-    "message": "VLC Dance"
-  },
-  "trial_vlcTechno": {
-    "message": "VLC Techno"
-  },
-  "trial_vlcParty": {
-    "message": "VLC Party"
-  },
-  "trial_vlcLargeHall": {
-    "message": "VLC Large Hall"
-  },
-  "trial_vlcBassTreble": {
-    "message": "VLC Basses & aigus"
-  },
-  "bassMode": {
-    "message": "Moteur des basses"
-  },
-  "bassModeHelp": {
-    "message": "Bêta : cloche à 70 Hz plus percutante, infra-basses coupées, basses tenues"
-  },
-  "bassClassic": {
-    "message": "Classique"
-  },
-  "bassBeta": {
-    "message": "Bêta"
+  "bassBell": {
+    "message": "cloche, plus de punch"
   },
   "off": {
     "message": "Off"
@@ -446,6 +416,9 @@
   "subfolderHelp": {
     "message": "Dans Téléchargements, vide pour aucun"
   },
+  "subfolderNone": {
+    "message": "Aucun"
+  },
   "naming": {
     "message": "Noms des fichiers"
   },
@@ -456,10 +429,19 @@
     "message": "Vérification…"
   },
   "hostMissing": {
-    "message": "Non installé : nécessaire pour le MP3, les extraits et YouTube en haute qualité"
+    "message": "Chrome ne peut pas lancer yt-dlp seul, même s'il est sur ton PC : installe une fois le petit module (host\\install.cmd)"
   },
   "hostInstall": {
     "message": "Installer"
+  },
+  "hostWrongId": {
+    "message": "Installé pour une autre copie de l'extension : relance host\\install.cmd"
+  },
+  "hostNoYtdlp": {
+    "message": "Le module est là mais yt-dlp a bougé : relance host\\install.cmd"
+  },
+  "hostTimeout": {
+    "message": "Le module n'a pas répondu, réessaie Vérifier"
   },
   "hostCheck": {
     "message": "Vérifier"

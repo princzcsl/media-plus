@@ -63,7 +63,8 @@ Get-Process MediaPlusHost -ErrorAction SilentlyContinue | Stop-Process -Force
 if ($LASTEXITCODE -ne 0) { throw 'Build failed.' }
 
 $utf8 = New-Object System.Text.UTF8Encoding $false
-$config = @{ ytdlp = $ytdlp; ffmpeg = $(if ($ffmpeg) { $ffmpeg } else { '' }) } | ConvertTo-Json
+$ytdlpVersion = (& $ytdlp --version 2>$null | Select-Object -First 1)
+$config = @{ ytdlp = $ytdlp; ytdlpVersion = "$ytdlpVersion".Trim(); ffmpeg = $(if ($ffmpeg) { $ffmpeg } else { '' }) } | ConvertTo-Json
 [IO.File]::WriteAllText((Join-Path $dir 'config.json'), $config, $utf8)
 
 $manifestPath = Join-Path $dir "$name.json"

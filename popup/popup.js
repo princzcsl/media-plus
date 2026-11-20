@@ -50,7 +50,7 @@ const [tab] = forcedTab ? [await chrome.tabs.get(forcedTab)] : await chrome.tabs
 
 // Companion status, filled in when the service worker answers.
 const host = { installed: false, checked: false };
-const hostReady = send({ type: 'host:info' })
+const hostReady = chrome.runtime.sendMessage({ type: 'host:info' })
   .then((info) => Object.assign(host, info, { checked: true }))
   .catch(() => Object.assign(host, { checked: true }));
 

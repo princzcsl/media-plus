@@ -65,25 +65,12 @@
         <div class="chips" id="presets"></div>
 
         <div class="section-head">
-          <h2 class="section-title" data-i18n="bassTrials"></h2>
-        </div>
-        <p class="muted small trials-help" data-i18n="bassTrialsHelp"></p>
-        <div class="chips" id="bass-trials"></div>
-
-        <div class="section-head">
           <h2 class="section-title" data-i18n="equalizer"></h2>
           <button class="link-btn" id="eq-reset" data-i18n="reset"></button>
         </div>
         <div class="card eq-card">
           <canvas id="eq-curve" class="eq-curve"></canvas>
           <div class="eq-bands" id="eq-bands"></div>
-          <div class="bass-mode">
-            <span><span class="label" data-i18n="bassMode"></span><span class="muted small" data-i18n="bassModeHelp"></span></span>
-            <div class="segmented" id="bass-mode" role="radiogroup">
-              <button data-bass="classic" data-i18n="bassClassic"></button>
-              <button data-bass="beta" data-i18n="bassBeta"></button>
-            </div>
-          </div>
         </div>
 
         <h2 class="section-title" data-i18n="effects"></h2>
@@ -159,7 +146,7 @@
           </div>
           <div class="item" id="subfolder-row">
             <span><span class="label" data-i18n="subfolder"></span><span class="muted small" data-i18n="subfolderHelp"></span></span>
-            <input class="input narrow" data-setting="subfolder" maxlength="60" placeholder="Media+">
+            <input class="input narrow" data-setting="subfolder" maxlength="60" data-i18n-placeholder="subfolderNone">
           </div>
           <div class="item">
             <span class="label" data-i18n="naming"></span>

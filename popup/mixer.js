@@ -1,6 +1,6 @@
-import { h, toast, send, paintRange } from './ui.js';
+import { h, toast, send, paintRange, setIcon } from './ui.js';
 import { t } from '../shared/i18n.js';
-import { BANDS, EQ_RANGE, PITCH_RANGE, bandLabel, PRESETS, BASS_TRIALS, freshState, isNeutral, matchesPreset, cleanState, fitEq, clampDb } from '../shared/audio.js';
+import { BANDS, EQ_RANGE, PITCH_RANGE, bandLabel, PRESETS, freshState, isNeutral, matchesPreset, cleanState, fitEq, clampDb } from '../shared/audio.js';
 import { createEq } from '../shared/curve.js';
 import { getCustomPresets, saveCustomPresets } from '../shared/settings.js';
 
@@ -166,7 +166,6 @@ export async function initMixer(tab, settings) {
   // ---- Presets ----
 
   const presetsEl = $('presets');
-  const trialsEl = $('bass-trials');
   const form = $('preset-form');
   const nameInput = $('preset-name');
 
@@ -174,6 +173,7 @@ export async function initMixer(tab, settings) {
     state.eq = [...p.eq];
     state.night = !!p.night;
     state.enhancer = p.enhancer || 0;
+    state.bass = p.bass || 'shelf';
     commit();
   }
 
@@ -197,12 +197,6 @@ export async function initMixer(tab, settings) {
           }
         })));
     presetsEl.replaceChildren(...builtIn, ...mine);
-    trialsEl.replaceChildren(...BASS_TRIALS.map((p) =>
-      h('button', {
-        class: ['chip', matchesPreset(state, p) && 'on'],
-        title: t(p.source === 'vlc' ? 'trialSourceVlc' : 'trialSourceHarman'),
-        onclick: () => applyPreset(p)
-      }, t(`trial_${p.id}`))));
   }
 
   $('preset-save').addEventListener('click', () => {
@@ -216,7 +210,7 @@ export async function initMixer(tab, settings) {
     e.preventDefault();
     const name = nameInput.value.trim();
     if (!name) return;
-    custom = [...custom, { id: Date.now().toString(36), name, eq: [...state.eq], night: state.night, enhancer: state.enhancer }];
+    custom = [...custom, { id: Date.now().toString(36), name, eq: [...state.eq], night: state.night, enhancer: state.enhancer, bass: state.bass }];
     await saveCustomPresets(custom);
     form.hidden = true;
     renderPresets();
@@ -226,6 +220,7 @@ export async function initMixer(tab, settings) {
   // ---- Equalizer ----
 
   const bandsEl = $('eq-bands');
+  let shapeBtn = null;
   const sliders = [];
   const values = [];
   for (let i = 0; i < BANDS.length; i++) {
@@ -244,7 +239,16 @@ export async function initMixer(tab, settings) {
     });
     sliders.push(slider);
     values.push(val);
-    bandsEl.append(h('div', { class: 'band' }, val, slider, h('span', { class: 'band-freq' }, bandLabel(BANDS[i]))));
+    const band = h('div', { class: 'band' }, val, slider, h('span', { class: 'band-freq' }, bandLabel(BANDS[i])));
+    // The lowest band's shape: shelf (even lift, Harman style) or bell (punch).
+    if (i === 0) {
+      shapeBtn = h('button', {
+        class: 'shape-btn', title: t('bassShape'),
+        onclick: () => { state.bass = state.bass === 'bell' ? 'shelf' : 'bell'; commit(); }
+      });
+      band.append(shapeBtn);
+    }
+    bandsEl.append(band);
   }
 
   $('eq-reset').addEventListener('click', () => {
@@ -255,11 +259,7 @@ export async function initMixer(tab, settings) {
   });
 
   const us = Float32Array.from({ length: CURVE_POINTS }, (_, k) => -0.5 + (k / (CURVE_POINTS - 1)) * BANDS.length);
-  const eqMaths = { classic: createEq(48000, 'classic'), beta: createEq(48000, 'beta') };
-  const bassModeEl = $('bass-mode');
-  for (const btn of bassModeEl.querySelectorAll('button')) {
-    btn.addEventListener('click', () => { state.bass = btn.dataset.bass; commit(); });
-  }
+  const eqMaths = { shelf: createEq(48000, 'shelf'), bell: createEq(48000, 'bell') };
   const curveFreqs = Array.from(us, freqAt);
   // Spectrum bars: 64 log bands from 30 Hz to 18 kHz (same split as the engine).
   const barU = Array.from({ length: 65 }, (_, i) => uAt(30 * 600 ** (i / 64)));
@@ -305,7 +305,7 @@ export async function initMixer(tab, settings) {
       g.stroke();
     }
 
-    const curve = eqMaths[state.bass === 'beta' ? 'beta' : 'classic'].response(state.eq, curveFreqs);
+    const curve = eqMaths[state.bass === 'bell' ? 'bell' : 'shelf'].response(state.eq, curveFreqs);
     const line = new Path2D();
     us.forEach((u, k) => {
       if (k) line.lineTo(x(u), y(curve[k]));
@@ -451,7 +451,10 @@ export async function initMixer(tab, settings) {
     paintRange(pitch);
     pitchValue.textContent = state.pitch ? t('semitones', `${state.pitch > 0 ? '+' : ''}${state.pitch}`) : t('pitchNormal');
     for (const btn of vocalEl.querySelectorAll('button')) btn.classList.toggle('on', btn.dataset.vocal === state.vocal);
-    for (const btn of bassModeEl.querySelectorAll('button')) btn.classList.toggle('on', btn.dataset.bass === state.bass);
+    setIcon(shapeBtn, state.bass === 'bell' ? 'bell' : 'shelf', 14);
+    shapeBtn.classList.toggle('on', state.bass === 'bell');
+    shapeBtn.setAttribute('aria-label', `${t('bassShape')} : ${t(state.bass === 'bell' ? 'bassBell' : 'bassShelf')}`);
+    shapeBtn.title = shapeBtn.getAttribute('aria-label');
     mono.checked = state.mono;
     if (Number(balance.value) !== state.balance && document.activeElement !== balance) balance.value = String(state.balance);
     paintRange(balance);

@@ -401,7 +401,7 @@ export function initMedia(tab, settings, mixer, host) {
         const reading = m.time + (playing && m.at ? ((now - m.at) / 1000) * (m.rate || 1) : 0);
         const predicted = position(now);
         const drift = reading - predicted;
-        anchor = playing && !cur.paused && Math.abs(drift) < 0.6 ? predicted + drift * 0.15 : reading;
+        anchor = playing && !cur.paused && Math.abs(drift) < 0.8 ? predicted + drift * (drift < 0 ? 0.04 : 0.25) : reading;
         anchorAt = now;
       }
       cur = { ...cur, ...m, thumb: m.thumb ?? cur.thumb };

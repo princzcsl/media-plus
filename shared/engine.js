@@ -32,7 +32,7 @@ const filterNode = (ctx, type, frequency, Q = 0.707) => {
 };
 
 export function createChain(ctx, input) {
-  const eqMaths = { classic: createEq(ctx.sampleRate, 'classic'), beta: createEq(ctx.sampleRate, 'beta') };
+  const eqMaths = { shelf: createEq(ctx.sampleRate, 'shelf'), bell: createEq(ctx.sampleRate, 'bell') };
 
   // Normalizer: slow automatic gain towards a steady loudness.
   const normalizer = gainNode(ctx);
@@ -62,7 +62,7 @@ export function createChain(ctx, input) {
     const spec = bandSpec(i);
     return filterNode(ctx, spec.type, spec.freq, spec.Q);
   });
-  let bassMode = 'classic';
+  let bassMode = 'shelf';
 
   // Beta bass: rumble below 25 Hz removed (it only eats headroom), and the low band
   // (under 150 Hz, Linkwitz-Riley split) gets its own gentle compressor, so a bass boost
@@ -87,14 +87,14 @@ export function createChain(ctx, input) {
   const shaper = ctx.createWaveShaper();
   // Classic: symmetric saturation (odd harmonics). Beta: asymmetric, mostly the octave
   // above, which the ear reads as a deeper, rounder fundamental.
-  const curves = { classic: new Float32Array(1024), beta: new Float32Array(1024) };
+  const curves = { shelf: new Float32Array(1024), bell: new Float32Array(1024) };
   for (let i = 0; i < 1024; i++) {
     const x = (i / 1023) * 2 - 1;
-    curves.classic[i] = Math.tanh(2.5 * x) / Math.tanh(2.5);
-    curves.beta[i] = 0.6 * Math.tanh(1.5 * x) + 0.8 * x * x - 0.25;
+    curves.shelf[i] = Math.tanh(2.5 * x) / Math.tanh(2.5);
+    curves.bell[i] = 0.6 * Math.tanh(1.5 * x) + 0.8 * x * x - 0.25;
   }
-  shaper.curve = curves.classic;
-  let shaperMode = 'classic';
+  shaper.curve = curves.shelf;
+  let shaperMode = 'shelf';
   shaper.oversample = '4x';
   const enhHigh = filterNode(ctx, 'highpass', 120);
   const enhTop = filterNode(ctx, 'lowpass', 1500);
@@ -130,7 +130,7 @@ export function createChain(ctx, input) {
     if (key === wiring) return;
     wiring = key;
     for (const node of [vocalIn, vocal, monoMerge, subsonic, eqOut, lowComp, xHigh2, mix, pitch, boost, nightMakeup, limiter]) node.disconnect();
-    const beta = s.bass === 'beta';
+    const beta = s.bass === 'bell';
 
     let tail = vocalIn;
     if (s.vocal === 'remove' || s.vocal === 'isolate') {
@@ -202,7 +202,7 @@ export function createChain(ctx, input) {
 
   function apply(s) {
     const now = ctx.currentTime;
-    const mode = s.bass === 'beta' ? 'beta' : 'classic';
+    const mode = s.bass === 'bell' ? 'bell' : 'shelf';
     if (mode !== bassMode) {
       bassMode = mode;
       const spec = bandSpec(0, mode);
@@ -213,13 +213,13 @@ export function createChain(ctx, input) {
     if (mode !== shaperMode) {
       shaperMode = mode;
       shaper.curve = curves[mode];
-      enhHigh.frequency.setValueAtTime(mode === 'beta' ? 90 : 120, now);
+      enhHigh.frequency.setValueAtTime(mode === 'bell' ? 90 : 120, now);
     }
     const math = eqMaths[mode];
     const gains = math.solve(s.eq);
     filters.forEach((f, i) => f.gain.setTargetAtTime(gains[i], now, RAMP));
     const peak = s.limiter ? math.peak(s.eq) : 0;
-    const room = mode === 'beta' ? -Math.max(0, peak - 6) * 0.35 : -Math.max(0, peak - 3) * 0.5;
+    const room = mode === 'bell' ? -Math.max(0, peak - 6) * 0.35 : -Math.max(0, peak - 3) * 0.5;
     headroom.gain.setTargetAtTime(dbToGain(room), now, RAMP);
     vocal.parameters.get('mode').setValueAtTime(s.vocal === 'isolate' ? 2 : 1, now);
     enhAmount.gain.setTargetAtTime((s.enhancer || 0) / 100 * 1.4, now, RAMP);

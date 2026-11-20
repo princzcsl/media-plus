@@ -1,6 +1,6 @@
 export const DEFAULTS = Object.freeze({
   saveAs: true,
-  subfolder: 'Media+',
+  subfolder: '',
   naming: 'title',
   engine: 'auto',
   quality: 'best',
