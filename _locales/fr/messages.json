@@ -323,6 +323,39 @@
   "effects": {
     "message": "Effets"
   },
+  "bassTrials": {
+    "message": "Presets basses à tester"
+  },
+  "bassTrialsHelp": {
+    "message": "Issus de références connues, pour comparer. Dis-moi lesquels garder."
+  },
+  "trialSourceVlc": {
+    "message": "Preset de VLC (repris de Winamp)"
+  },
+  "trialSourceHarman": {
+    "message": "Basses de la courbe cible Harman, la référence des audiophiles pour les casques"
+  },
+  "trial_harman": {
+    "message": "Harman"
+  },
+  "trial_vlcFullBass": {
+    "message": "VLC Full Bass"
+  },
+  "trial_vlcDance": {
+    "message": "VLC Dance"
+  },
+  "trial_vlcTechno": {
+    "message": "VLC Techno"
+  },
+  "trial_vlcParty": {
+    "message": "VLC Party"
+  },
+  "trial_vlcLargeHall": {
+    "message": "VLC Large Hall"
+  },
+  "trial_vlcBassTreble": {
+    "message": "VLC Basses & aigus"
+  },
   "bassMode": {
     "message": "Moteur des basses"
   },

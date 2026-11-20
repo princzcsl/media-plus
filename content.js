@@ -173,6 +173,7 @@
       paused: el.paused,
       ended: el.ended,
       time: el.currentTime || 0,
+      at: Date.now(),
       duration: Number.isFinite(d) ? d : d === Infinity ? -1 : 0,
       volume: el.volume,
       muted: el.muted,

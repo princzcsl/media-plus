@@ -12,7 +12,7 @@ export const bandCorner = (i) => (i === 0 ? 95 : i === BANDS.length - 1 ? 12500 
 // Filter of each band. The beta bass engine uses a bell at 70 Hz for the lowest band
 // instead of a shelf, so the boost stays on the punch and doesn't pile up in the sub-bass.
 export function bandSpec(i, bass = 'classic') {
-  if (i === 0 && bass === 'beta') return { type: 'peaking', freq: 70, Q: 0.8 };
+  if (i === 0 && bass === 'beta') return { type: 'peaking', freq: 70, Q: 0.55 };
   return { type: bandType(i), freq: bandCorner(i), Q: BAND_Q };
 }
 
@@ -91,6 +91,19 @@ export const PRESETS = [
   { id: 'clarity', eq: [0, 0, -2, 0, 2, 4, 4, 3] },
   { id: 'laptop', eq: [-6, 4, 2, 0, 2, 3, 2, 0], enhancer: 50 },
   { id: 'night', eq: [-6, -3, 0, 1, 3, 2, 0, -1], night: true }
+];
+
+// Bass presets to try out, from known sources, resampled to the 8 bands:
+// the Harman headphone target's bass shelf (+6 dB at 105 Hz), and VLC's presets
+// (the ones Winamp made popular).
+export const BASS_TRIALS = [
+  { id: 'harman', source: 'harman', eq: [5.5, 1.5, 0, 0, 0, 0, 0, 0] },
+  { id: 'vlcFullBass', source: 'vlc', eq: [-8, 7.5, 8, 1.5, -3, -8, -10, -11] },
+  { id: 'vlcDance', source: 'vlc', eq: [9.5, 7.5, 1.5, 0, -4.5, -7, -7, 0] },
+  { id: 'vlcTechno', source: 'vlc', eq: [8, 6, -2, -5, -1, 8, 9, 9] },
+  { id: 'vlcParty', source: 'vlc', eq: [7, 7, 0, 0, 0, 0, 0, 7] },
+  { id: 'vlcLargeHall', source: 'vlc', eq: [10.5, 10.5, 5.5, 0, -4, -5, -5, 0] },
+  { id: 'vlcBassTreble', source: 'vlc', eq: [7, 6, -3, -5, 0.5, 8, 10.5, 12] }
 ];
 
 export const sameEq = (a, b) => a.length === b.length && a.every((g, i) => g === b[i]);

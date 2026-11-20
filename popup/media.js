@@ -164,7 +164,7 @@ export function initMedia(tab, settings, mixer, host) {
     volume.addEventListener('input', () => {
       let pos = Number(volume.value);
       // Magnet: 100 % catches the thumb from a few percent away, and the thumb snaps to it.
-      if (Math.abs(pos - 500) < 32) {
+      if (Math.abs(pos - 500) < 12) {
         pos = 500;
         volume.value = '500';
       }
@@ -373,8 +373,13 @@ export function initMedia(tab, settings, mixer, host) {
     card.el = h('article', { class: 'media' }, head, body);
 
     // Between two polls the position moves on locally, so the timeline glides.
-    let syncedAt = performance.now();
+    // anchor = position at anchorAt (Date.now()); small differences with a new reading
+    // are eased in instead of jumping, big ones (seek, buffering) are applied at once.
+    let anchor = initial.time || 0;
+    let anchorAt = Date.now();
     let shownSecond = -1;
+    const position = (now = Date.now()) =>
+      cur.paused || cur.ended ? anchor : Math.min(cur.duration > 0 ? cur.duration : Infinity, anchor + ((now - anchorAt) / 1000) * (cur.rate || 1));
     function renderTime(time) {
       seek.value = String(Math.round((time / cur.duration) * 10000));
       paintRange(seek);
@@ -384,13 +389,21 @@ export function initMedia(tab, settings, mixer, host) {
         timeEl.textContent = `${fmtTime(time)} / ${fmtTime(cur.duration)}`;
       }
     }
-    card.tick = (now) => {
+    card.tick = () => {
       if (seeking || cur.paused || cur.ended || !(cur.duration > 0) || !card.el.classList.contains('open')) return;
-      renderTime(Math.min(cur.duration, cur.time + ((now - syncedAt) / 1000) * (cur.rate || 1)));
+      renderTime(position());
     };
 
     function update(m) {
-      if (m.time != null) syncedAt = performance.now();
+      if (m.time != null) {
+        const now = Date.now();
+        const playing = !m.paused && !m.ended;
+        const reading = m.time + (playing && m.at ? ((now - m.at) / 1000) * (m.rate || 1) : 0);
+        const predicted = position(now);
+        const drift = reading - predicted;
+        anchor = playing && !cur.paused && Math.abs(drift) < 0.6 ? predicted + drift * 0.15 : reading;
+        anchorAt = now;
+      }
       cur = { ...cur, ...m, thumb: m.thumb ?? cur.thumb };
       card.el.classList.toggle('playing', !cur.paused);
       title.textContent = cur.title;
@@ -414,7 +427,7 @@ export function initMedia(tab, settings, mixer, host) {
       const hasDuration = cur.duration > 0;
       seek.disabled = !hasDuration;
       if (!seeking) {
-        if (hasDuration) renderTime(cur.time);
+        if (hasDuration) renderTime(position());
         else {
           seek.value = '0';
           paintRange(seek);

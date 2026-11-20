@@ -1,6 +1,6 @@
 import { h, toast, send, paintRange } from './ui.js';
 import { t } from '../shared/i18n.js';
-import { BANDS, EQ_RANGE, PITCH_RANGE, bandLabel, PRESETS, freshState, isNeutral, matchesPreset, cleanState, fitEq, clampDb } from '../shared/audio.js';
+import { BANDS, EQ_RANGE, PITCH_RANGE, bandLabel, PRESETS, BASS_TRIALS, freshState, isNeutral, matchesPreset, cleanState, fitEq, clampDb } from '../shared/audio.js';
 import { createEq } from '../shared/curve.js';
 import { getCustomPresets, saveCustomPresets } from '../shared/settings.js';
 
@@ -166,6 +166,7 @@ export async function initMixer(tab, settings) {
   // ---- Presets ----
 
   const presetsEl = $('presets');
+  const trialsEl = $('bass-trials');
   const form = $('preset-form');
   const nameInput = $('preset-name');
 
@@ -196,6 +197,12 @@ export async function initMixer(tab, settings) {
           }
         })));
     presetsEl.replaceChildren(...builtIn, ...mine);
+    trialsEl.replaceChildren(...BASS_TRIALS.map((p) =>
+      h('button', {
+        class: ['chip', matchesPreset(state, p) && 'on'],
+        title: t(p.source === 'vlc' ? 'trialSourceVlc' : 'trialSourceHarman'),
+        onclick: () => applyPreset(p)
+      }, t(`trial_${p.id}`))));
   }
 
   $('preset-save').addEventListener('click', () => {

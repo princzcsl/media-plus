@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.1
+- Timeline: positions are time-stamped and small differences eased in, so it no longer steps back at each refresh
+- Weaker magnet on the volume slider
+- Beta bass: wider, gentler bell
+- Bass presets to try: Harman headphone target and VLC presets (Full Bass, Dance, Techno, Party, Large Hall, Bass & Treble)
+
 ## 1.3.0
 - Timeline glides between updates instead of jumping every second
 - Volume slider: a magnet catches 100 % from a few percent away

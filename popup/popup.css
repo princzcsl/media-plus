@@ -576,3 +576,4 @@ label.item { cursor: pointer; }
 .bass-mode { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 12px 6px 2px; padding-top: 10px; border-top: 0.5px solid var(--hairline); }
 .bass-mode .segmented { flex-shrink: 0; width: 170px; }
 .bass-mode .small { display: block; margin-top: 1px; }
+.trials-help { margin: -4px 2px 8px; line-height: 1.4; }
