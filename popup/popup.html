@@ -73,6 +73,36 @@
           <div class="eq-bands" id="eq-bands"></div>
         </div>
 
+        <h2 class="section-title" data-i18n="effects"></h2>
+        <div class="list">
+          <div class="item">
+            <span><span class="label" data-i18n="enhancer"></span><span class="muted small" data-i18n="enhancerHelp"></span></span>
+            <div class="effect-slider">
+              <span class="small effect-value" id="enhancer-value"></span>
+              <input type="range" class="range" id="enhancer" min="0" max="100" step="5" value="0" data-i18n-title="enhancer">
+            </div>
+          </div>
+          <label class="item">
+            <span><span class="label" data-i18n="normalize"></span><span class="muted small" data-i18n="normalizeHelp"></span></span>
+            <span class="switch"><input type="checkbox" id="normalize"><span></span></span>
+          </label>
+          <div class="item stacked">
+            <span><span class="label" data-i18n="vocal"></span><span class="muted small" data-i18n="vocalHelp"></span></span>
+            <div class="segmented" id="vocal" role="radiogroup">
+              <button data-vocal="off" data-i18n="vocalOff"></button>
+              <button data-vocal="remove" data-i18n="vocalRemove"></button>
+              <button data-vocal="isolate" data-i18n="vocalIsolate"></button>
+            </div>
+          </div>
+          <div class="item">
+            <span><span class="label" data-i18n="pitch"></span><span class="muted small" data-i18n="pitchHelp"></span></span>
+            <div class="effect-slider">
+              <span class="small effect-value" id="pitch-value"></span>
+              <input type="range" class="range" id="pitch" min="-12" max="12" step="1" value="0" data-i18n-title="pitch">
+            </div>
+          </div>
+        </div>
+
         <h2 class="section-title" data-i18n="output"></h2>
         <div class="list">
           <label class="item">

@@ -1,12 +1,18 @@
 // Audio engine: one chain per processed tab inside a shared AudioContext.
 // The service worker closes this document as soon as no tab is processed.
-import { createChain } from './shared/engine.js';
+import { createChain, loadWorklets } from './shared/engine.js';
 
 let ctx = null;
+let ready = null;
 const graphs = new Map();
 
-function getContext() {
-  if (!ctx || ctx.state === 'closed') ctx = new AudioContext({ latencyHint: 'interactive' });
+// One context for every processed tab, with the pitch and limiter worklets loaded once.
+async function getContext() {
+  if (!ctx || ctx.state === 'closed') {
+    ctx = new AudioContext({ latencyHint: 'interactive' });
+    ready = loadWorklets(ctx, chrome.runtime.getURL('shared/worklets.js'));
+  }
+  await ready;
   return ctx;
 }
 
@@ -19,6 +25,7 @@ function stop(tabId) {
   if (!graphs.size && ctx) {
     ctx.close();
     ctx = null;
+    ready = null;
   }
 }
 
@@ -31,7 +38,7 @@ async function start(tabId, streamId, state) {
     audio: { mandatory: { chromeMediaSource: 'tab', chromeMediaSourceId: streamId } },
     video: false
   });
-  const ac = getContext();
+  const ac = await getContext();
   const chain = createChain(ac, ac.createMediaStreamSource(stream));
   chain.output.connect(ac.destination);
   const g = { stream, chain };

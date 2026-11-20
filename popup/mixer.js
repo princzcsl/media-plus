@@ -1,12 +1,12 @@
 import { h, toast, send, paintRange } from './ui.js';
 import { t } from '../shared/i18n.js';
-import { BANDS, EQ_RANGE, bandLabel, PRESETS, freshState, isNeutral, sameEq, cleanState, fitEq, clampDb } from '../shared/audio.js';
-import { createResponse } from '../shared/curve.js';
+import { BANDS, EQ_RANGE, PITCH_RANGE, bandLabel, PRESETS, freshState, isNeutral, matchesPreset, cleanState, fitEq, clampDb } from '../shared/audio.js';
+import { createEq } from '../shared/curve.js';
 import { getCustomPresets, saveCustomPresets } from '../shared/settings.js';
 
 const MAX_CUSTOM = 12;
 const CURVE_POINTS = 180;
-const DB_SPAN = 24;
+const DB_SPAN = 18;
 const SPECTRUM_MS = 50;
 
 // Position on the evenly spaced band axis (0..7) for a frequency, and back.
@@ -172,18 +172,19 @@ export async function initMixer(tab, settings) {
   function applyPreset(p) {
     state.eq = [...p.eq];
     state.night = !!p.night;
+    state.enhancer = p.enhancer || 0;
     commit();
   }
 
   function renderPresets() {
     const builtIn = PRESETS.map((p) =>
       h('button', {
-        class: ['chip', sameEq(state.eq, p.eq) && !!p.night === state.night && 'on'],
+        class: ['chip', matchesPreset(state, p) && 'on'],
         title: t(`presetHelp_${p.id}`),
         onclick: () => applyPreset(p)
       }, t(`preset_${p.id}`)));
     const mine = custom.map((p) =>
-      h('button', { class: ['chip', sameEq(state.eq, p.eq) && 'on'], title: p.name, onclick: () => applyPreset(p) },
+      h('button', { class: ['chip', matchesPreset(state, p) && 'on'], title: p.name, onclick: () => applyPreset(p) },
         p.name,
         h('span', {
           class: 'chip-x', icon: 'close', iconSize: 12, role: 'button', title: t('delete'),
@@ -208,7 +209,7 @@ export async function initMixer(tab, settings) {
     e.preventDefault();
     const name = nameInput.value.trim();
     if (!name) return;
-    custom = [...custom, { id: Date.now().toString(36), name, eq: [...state.eq], night: state.night }];
+    custom = [...custom, { id: Date.now().toString(36), name, eq: [...state.eq], night: state.night, enhancer: state.enhancer }];
     await saveCustomPresets(custom);
     form.hidden = true;
     renderPresets();
@@ -242,12 +243,13 @@ export async function initMixer(tab, settings) {
   $('eq-reset').addEventListener('click', () => {
     state.eq = BANDS.map(() => 0);
     state.night = false;
+    state.enhancer = 0;
     commit();
   });
 
   const us = Float32Array.from({ length: CURVE_POINTS }, (_, k) => -0.5 + (k / (CURVE_POINTS - 1)) * BANDS.length);
-  const response = createResponse(Float32Array.from(us, freqAt));
-  const bandResponse = createResponse(BANDS);
+  const eqMath = createEq();
+  const curveFreqs = Array.from(us, freqAt);
   // Spectrum bars: 64 log bands from 30 Hz to 18 kHz (same split as the engine).
   const barU = Array.from({ length: 65 }, (_, i) => uAt(30 * 600 ** (i / 64)));
   let bars = null;
@@ -284,7 +286,7 @@ export async function initMixer(tab, settings) {
     }
 
     g.lineWidth = 1;
-    for (const db of [-18, -12, -6, 0, 6, 12, 18]) {
+    for (const db of [-12, -6, 0, 6, 12]) {
       g.strokeStyle = `rgba(${tint}, ${db === 0 ? 0.18 : 0.06})`;
       g.beginPath();
       g.moveTo(0, Math.round(y(db)) + 0.5);
@@ -292,7 +294,7 @@ export async function initMixer(tab, settings) {
       g.stroke();
     }
 
-    const curve = response(state.eq);
+    const curve = eqMath.response(state.eq, curveFreqs);
     const line = new Path2D();
     us.forEach((u, k) => {
       if (k) line.lineTo(x(u), y(curve[k]));
@@ -313,11 +315,10 @@ export async function initMixer(tab, settings) {
     g.lineJoin = 'round';
     g.stroke(line);
 
-    // Handles sit on the curve, where the band really ends up.
-    const atBands = bandResponse(state.eq);
+    // The filters are solved so the curve goes exactly through every slider value.
     state.eq.forEach((db, i) => {
       g.beginPath();
-      g.arc(x(i), y(atBands[i]), 4, 0, Math.PI * 2);
+      g.arc(x(i), y(db), 4, 0, Math.PI * 2);
       g.fillStyle = db ? '#fff' : `rgba(${tint}, 0.4)`;
       g.fill();
       if (db) {
@@ -372,6 +373,25 @@ export async function initMixer(tab, settings) {
   }
   document.addEventListener('visibilitychange', spectrumLoop);
 
+  // ---- Effects ----
+
+  const enhancer = $('enhancer');
+  const enhancerValue = $('enhancer-value');
+  const normalize = $('normalize');
+  const pitch = $('pitch');
+  pitch.min = String(-PITCH_RANGE);
+  pitch.max = String(PITCH_RANGE);
+  const pitchValue = $('pitch-value');
+  const vocalEl = $('vocal');
+  enhancer.addEventListener('input', () => { state.enhancer = Number(enhancer.value); commit(); });
+  enhancer.addEventListener('dblclick', () => { state.enhancer = 0; commit(); });
+  normalize.addEventListener('change', () => { state.normalize = normalize.checked; commit(); });
+  pitch.addEventListener('input', () => { state.pitch = Number(pitch.value); commit(); });
+  pitch.addEventListener('dblclick', () => { state.pitch = 0; commit(); });
+  for (const btn of vocalEl.querySelectorAll('button')) {
+    btn.addEventListener('click', () => { state.vocal = btn.dataset.vocal; commit(); });
+  }
+
   // ---- Output ----
 
   const limiter = $('limiter');
@@ -413,6 +433,14 @@ export async function initMixer(tab, settings) {
 
     limiter.checked = state.limiter;
     night.checked = state.night;
+    if (document.activeElement !== enhancer) enhancer.value = String(state.enhancer);
+    paintRange(enhancer);
+    enhancerValue.textContent = state.enhancer ? `${state.enhancer} %` : t('off');
+    normalize.checked = state.normalize;
+    if (document.activeElement !== pitch) pitch.value = String(state.pitch);
+    paintRange(pitch);
+    pitchValue.textContent = state.pitch ? t('semitones', `${state.pitch > 0 ? '+' : ''}${state.pitch}`) : t('pitchNormal');
+    for (const btn of vocalEl.querySelectorAll('button')) btn.classList.toggle('on', btn.dataset.vocal === state.vocal);
     mono.checked = state.mono;
     if (Number(balance.value) !== state.balance && document.activeElement !== balance) balance.value = String(state.balance);
     paintRange(balance);

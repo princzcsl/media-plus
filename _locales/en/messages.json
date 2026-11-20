@@ -77,6 +77,9 @@
   "volume": {
     "message": "Volume"
   },
+  "volumeHelp": {
+    "message": "100 % (the middle) is the site's normal volume, beyond it boosts the tab. Double-click to reset."
+  },
   "speed": {
     "message": "Speed"
   },
@@ -127,9 +130,6 @@
   },
   "recordInstead": {
     "message": "Record it while it plays instead"
-  },
-  "showOnPage": {
-    "message": "Show on the page"
   },
   "open": {
     "message": "Open"
@@ -319,6 +319,51 @@
   },
   "mixerRestoredSite": {
     "message": "Mixer settings for $1 applied"
+  },
+  "effects": {
+    "message": "Effects"
+  },
+  "off": {
+    "message": "Off"
+  },
+  "enhancer": {
+    "message": "Bass enhancer"
+  },
+  "enhancerHelp": {
+    "message": "Adds the harmonics of the bass: you hear it even on small speakers"
+  },
+  "normalize": {
+    "message": "Normalizer"
+  },
+  "normalizeHelp": {
+    "message": "Same loudness from one video to the next"
+  },
+  "vocal": {
+    "message": "Voice"
+  },
+  "vocalHelp": {
+    "message": "Works on voices mixed in the centre, like most songs"
+  },
+  "vocalOff": {
+    "message": "Normal"
+  },
+  "vocalRemove": {
+    "message": "Karaoke"
+  },
+  "vocalIsolate": {
+    "message": "Voice only"
+  },
+  "pitch": {
+    "message": "Pitch"
+  },
+  "pitchHelp": {
+    "message": "Higher or lower without changing the speed"
+  },
+  "pitchNormal": {
+    "message": "Normal"
+  },
+  "semitones": {
+    "message": "$1 semitones"
   },
   "mixerNote": {
     "message": "The mixer processes all the sound of this tab. Chrome shows a sharing icon on the tab while it's on."

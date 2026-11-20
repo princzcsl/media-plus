@@ -123,19 +123,38 @@
 
   const thumbs = new WeakMap();
 
-  function thumbOf(el) {
-    if (thumbs.has(el)) return thumbs.get(el);
-    let thumb = el.poster || '';
-    if (el.tagName === 'VIDEO' && el.videoWidth && el.readyState >= 2) {
-      try {
-        const canvas = document.createElement('canvas');
-        canvas.width = 160;
-        canvas.height = Math.max(1, Math.round((160 * el.videoHeight) / el.videoWidth));
-        canvas.getContext('2d').drawImage(el, 0, 0, canvas.width, canvas.height);
-        thumb = canvas.toDataURL('image/jpeg', 0.7);
-      } catch { /* cross-origin frame: keep the poster */ }
-      thumbs.set(el, thumb);
+  // Artwork the site gives for what is playing (YouTube, Spotify…), as big as a card needs.
+  function artwork(el) {
+    try {
+      if (el.paused && !el.currentTime) return '';
+      const list = navigator.mediaSession?.metadata?.artwork || [];
+      const size = (a) => Number(String(a.sizes || '').split('x')[0]) || 0;
+      const pick = [...list].sort((a, b) => size(a) - size(b)).find((a) => size(a) >= 160) || list[list.length - 1];
+      return pick?.src || '';
+    } catch {
+      return '';
     }
+  }
+
+  // Thumbnail: the site's artwork, else the poster, else a frame of the video.
+  // Cached per source so a playlist moving to the next video gets a new one.
+  function thumbOf(el) {
+    const art = artwork(el);
+    if (art) return art;
+    if (el.poster) return el.poster;
+    const key = el.currentSrc || el.src;
+    const cached = thumbs.get(el);
+    if (cached && cached.key === key) return cached.thumb;
+    if (el.tagName !== 'VIDEO' || !el.videoWidth || el.readyState < 2) return '';
+    let thumb = '';
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = 160;
+      canvas.height = Math.max(1, Math.round((160 * el.videoHeight) / el.videoWidth));
+      canvas.getContext('2d').drawImage(el, 0, 0, canvas.width, canvas.height);
+      thumb = canvas.toDataURL('image/jpeg', 0.7);
+    } catch { /* cross-origin video */ }
+    thumbs.set(el, { key, thumb });
     return thumb;
   }
 
@@ -369,7 +388,6 @@
     ab: setAB,
     pip,
     record: (el, arg) => (arg?.stop ? stopRecording(el) : startRecording(el, arg || {})),
-    focus: (el) => el.scrollIntoView({ block: 'center', behavior: 'smooth' }),
     shot: (el, arg) => shot(el, arg || {}),
     resolve
   };

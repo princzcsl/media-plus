@@ -8,21 +8,22 @@ A Chrome extension to control the media playing in your browser, from one popup:
 
 **Media** (videos and sounds of the current tab, iframes and shadow DOM included, hidden preview players left out)
 - Play / pause, seek, speed from 0.25× to 3×, loop and A-B loop
-- One volume slider: 0-100 % is the media's own volume, above that it drives the mixer's boost
+- One volume slider: 100 % in the middle is the site's normal volume, the left half lowers the media, the right half boosts the tab
 - **Download**: video MP4 or audio MP3, whole or an extract (from / to, or the A-B loop)
   - direct files are saved by Chrome right away
   - streamed media (YouTube, Twitch, X…), MP3 and extracts go through [yt-dlp](#yt-dlp-companion), then Chrome's download manager
   - without the companion, the media is recorded while it plays (MP4, or M4A for audio)
 - Frame capture at the video's full resolution (PNG, JPEG or WebP), downloaded and/or copied. Videos protected by the site are cropped from a capture of the tab
 - Open the source in a new tab: the file itself, or the CDN stream / manifest behind a `blob:` URL
-- Picture-in-picture, scroll to the media on the page
+- Picture-in-picture
 - Other tabs playing sound: pause, mute, jump to them, mute all
 
 **Mixer** (whole tab)
 - Volume boost up to 600 %
-- 8-band equalizer (60 Hz → 15 kHz, ±18 dB) with a live spectrum and a response curve you can drag
+- 8-band equalizer (60 Hz → 15 kHz, ±14 dB) with a live spectrum; the curve goes exactly through the slider values and can be dragged
 - Presets: Flat, Bass, Bass+, Voice, Movie, Music, Clarity, PC speakers, Night, plus your own
-- Anti-distortion (automatic headroom + limiter), night mode (evens out quiet and loud parts), mono, balance
+- Effects: bass enhancer, normalizer, karaoke / voice only, pitch without changing the speed
+- Anti-distortion (headroom + look-ahead limiter), night mode (evens out quiet and loud parts), mono, balance
 - Settings remembered per site or everywhere, applied when you open Media+ on the tab
 
 **Settings**

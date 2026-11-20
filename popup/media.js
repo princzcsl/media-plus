@@ -70,7 +70,7 @@ export function initMedia(tab, settings, mixer, host) {
   async function refresh() {
     let items;
     try {
-      items = await listMedia(tab.id, { deep: tick % 5 === 0, thumbs: wantThumbs });
+      items = await listMedia(tab.id, { deep: tick % 5 === 0, thumbs: wantThumbs || tick % 4 === 0 });
     } catch {
       showEmpty('restricted');
       return;
@@ -152,29 +152,39 @@ export function initMedia(tab, settings, mixer, host) {
       seeking = false;
     });
 
-    // Volume: 0-100 % is the media's own volume, above that the tab boost of the mixer.
+    // Volume: 100 % (the middle) is the sound as the site plays it. The left half is the
+    // media's own volume, the right half the mixer boost, up to the maximum boost.
     const muteBtn = h('button', { class: 'icon-btn ghost', title: t('mute'), onclick: () => op('mute', !cur.muted) });
     const sendVolume = throttle((v) => op('volume', v), 80);
-    const volume = h('input', { type: 'range', class: 'range', min: 0, max: settings.maxBoost, step: 1, 'aria-label': t('volume') });
+    const volume = h('input', { type: 'range', class: 'range', min: 0, max: 1000, step: 1, 'aria-label': t('volume'), title: t('volumeHelp') });
     const volValue = h('span', { class: 'vol-value' });
+    const toPercent = (pos) => (pos <= 500 ? pos / 5 : 100 + ((pos - 500) / 500) * (settings.maxBoost - 100));
+    const toPos = (pct) => (pct <= 100 ? pct * 5 : 500 + ((pct - 100) / (settings.maxBoost - 100)) * 500);
     volume.addEventListener('input', () => {
-      const v = Number(volume.value);
-      if (v <= 100) {
-        sendVolume(v / 100);
+      let pos = Number(volume.value);
+      if (Math.abs(pos - 500) < 18) pos = 500;
+      const pct = Math.round(toPercent(pos));
+      if (pct <= 100) {
+        sendVolume(pct / 100);
         if (mixer.getBoost() !== 100) mixer.setBoost(100);
       } else {
         if (cur.volume < 1 || cur.muted) sendVolume(1);
-        mixer.setBoost(Math.round(v / 5) * 5);
+        mixer.setBoost(Math.round(pct / 5) * 5);
       }
-      renderVolume(v);
+      renderVolume(pct);
+    });
+    volume.addEventListener('dblclick', () => {
+      sendVolume(1);
+      mixer.setBoost(100);
+      renderVolume(100);
     });
     volume.addEventListener('change', () => volume.blur());
 
-    function renderVolume(v) {
-      volume.max = String(settings.maxBoost);
-      paintRange(volume, 100);
-      volValue.textContent = `${Math.round(v)}%`;
-      volValue.classList.toggle('over', v > 100);
+    function renderVolume(pct) {
+      if (document.activeElement !== volume) volume.value = String(Math.round(toPos(pct)));
+      paintRange(volume, 500);
+      volValue.textContent = `${Math.round(pct)}%`;
+      volValue.classList.toggle('over', pct > 100);
     }
 
     const speed = h('select', { class: 'select compact', title: t('speed'), onchange: () => op('rate', Number(speed.value)) },
@@ -252,7 +262,6 @@ export function initMedia(tab, settings, mixer, host) {
     });
 
     const pipBtn = action('pip', 'pip', () => op('pip'));
-    const focusBtn = action('focus', 'showOnPage', () => op('focus'));
 
     // Download options: format, whole or extract, and how it will be fetched.
     async function openDownload() {
@@ -351,8 +360,9 @@ export function initMedia(tab, settings, mixer, host) {
 
     const body = h('div', { class: 'm-body' },
       h('div', { class: 'm-row' }, playBtn, seek, timeEl),
-      h('div', { class: 'm-row' }, muteBtn, volume, volValue, speed, loopBtn, abBtn),
-      h('div', { class: 'm-actions' }, downloadBtn, shotBtn, sourceBtn, pipBtn, focusBtn),
+      h('div', { class: 'm-row' }, muteBtn, h('div', { class: 'vol-wrap' }, volume), volValue),
+      h('div', { class: 'm-row' }, h('span', { class: 'small muted' }, t('speed')), speed, h('span', { class: 'm-spacer' }), loopBtn, abBtn),
+      h('div', { class: 'm-actions' }, downloadBtn, shotBtn, sourceBtn, pipBtn),
       sheet);
 
     card.el = h('article', { class: 'media' }, head, body);
@@ -370,11 +380,12 @@ export function initMedia(tab, settings, mixer, host) {
       if (cur.recording) meta.append(h('span', { class: 'rec-dot' }, `● REC ${fmtTime((Date.now() - cur.recording.since) / 1000)} · `));
       meta.append(parts.join(' · '));
 
-      if (cur.thumb && !card.hasThumb) {
+      if (cur.thumb && cur.thumb !== card.thumb) {
+        card.thumb = cur.thumb;
         thumb.style.backgroundImage = `url("${cur.thumb.replace(/"/g, '%22')}")`;
         thumb.classList.add('has-img');
-        card.hasThumb = cur.thumb.startsWith('data:') || cur.kind !== 'video';
       }
+      card.hasThumb = !!card.thumb;
 
       setIcon(playBtn, cur.paused || cur.ended ? 'play' : 'pause', 16);
       const hasDuration = cur.duration > 0;
@@ -388,9 +399,7 @@ export function initMedia(tab, settings, mixer, host) {
       setIcon(muteBtn, cur.muted || cur.volume === 0 ? 'volumeOff' : 'volume', 18);
       if (document.activeElement !== volume) {
         const boost = mixer.getBoost();
-        const v = cur.volume >= 0.995 && boost !== 100 ? boost : Math.round(cur.volume * 100);
-        volume.value = String(v);
-        renderVolume(v);
+        renderVolume(cur.volume >= 0.995 && boost !== 100 ? boost : Math.round(cur.volume * 100));
       }
 
       const rate = String(cur.rate);

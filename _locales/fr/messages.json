@@ -77,6 +77,9 @@
   "volume": {
     "message": "Volume"
   },
+  "volumeHelp": {
+    "message": "100 % (le milieu) = le volume normal du site, au-delà le son de l'onglet est boosté. Double-clic pour revenir à 100 %."
+  },
   "speed": {
     "message": "Vitesse"
   },
@@ -127,9 +130,6 @@
   },
   "recordInstead": {
     "message": "L'enregistrer pendant la lecture à la place"
-  },
-  "showOnPage": {
-    "message": "Afficher sur la page"
   },
   "open": {
     "message": "Ouvrir"
@@ -319,6 +319,51 @@
   },
   "mixerRestoredSite": {
     "message": "Réglages du mixeur pour $1 appliqués"
+  },
+  "effects": {
+    "message": "Effets"
+  },
+  "off": {
+    "message": "Off"
+  },
+  "enhancer": {
+    "message": "Bass enhancer"
+  },
+  "enhancerHelp": {
+    "message": "Ajoute les harmoniques des basses : on les entend même sur de petits haut-parleurs"
+  },
+  "normalize": {
+    "message": "Normaliseur"
+  },
+  "normalizeHelp": {
+    "message": "Le même niveau sonore d'une vidéo à l'autre"
+  },
+  "vocal": {
+    "message": "Voix"
+  },
+  "vocalHelp": {
+    "message": "Agit sur les voix mixées au centre, comme dans la plupart des chansons"
+  },
+  "vocalOff": {
+    "message": "Normal"
+  },
+  "vocalRemove": {
+    "message": "Karaoké"
+  },
+  "vocalIsolate": {
+    "message": "Voix seule"
+  },
+  "pitch": {
+    "message": "Hauteur du son"
+  },
+  "pitchHelp": {
+    "message": "Plus aigu ou plus grave, sans changer la vitesse"
+  },
+  "pitchNormal": {
+    "message": "Normale"
+  },
+  "semitones": {
+    "message": "$1 demi-tons"
   },
   "mixerNote": {
     "message": "Le mixeur traite tout le son de cet onglet. Chrome affiche une icône de partage sur l'onglet tant qu'il est actif."
