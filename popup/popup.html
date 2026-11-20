@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="color-scheme" content="dark light">
+  <title>Media+</title>
+  <link rel="stylesheet" href="popup.css">
+  <script type="module" src="popup.js"></script>
+</head>
+<body>
+  <div class="app">
+    <header class="head">
+      <div class="brand">
+        <img src="../icons/48.png" alt="" width="22" height="22">
+        <span class="brand-name">Media+</span>
+        <span class="muted brand-ver" id="version"></span>
+      </div>
+      <div class="live" id="audio-live" hidden>
+        <span class="live-dot"></span><span data-i18n="mixerActive"></span>
+      </div>
+    </header>
+
+    <nav class="tabs" role="tablist">
+      <button class="tab" role="tab" data-view="media" data-icon="video"><span data-i18n="tabMedia"></span></button>
+      <button class="tab" role="tab" data-view="mixer" data-icon="sliders"><span data-i18n="tabMixer"></span></button>
+      <button class="tab" role="tab" data-view="settings" data-icon="settings"><span data-i18n="tabSettings"></span></button>
+    </nav>
+
+    <main class="body">
+      <!-- Media -->
+      <section class="view" id="view-media" role="tabpanel">
+        <div id="media-list" class="media-list"></div>
+        <div id="others" hidden>
+          <div class="section-head">
+            <h2 class="section-title" data-i18n="otherTabs"></h2>
+            <button class="link-btn" id="mute-others" data-i18n="muteOthers"></button>
+          </div>
+          <div id="other-list" class="other-list"></div>
+        </div>
+      </section>
+
+      <!-- Mixer -->
+      <section class="view" id="view-mixer" role="tabpanel" hidden>
+        <div class="card boost-card">
+          <div class="row space">
+            <div>
+              <div class="label" data-i18n="boost"></div>
+              <div class="muted small" data-i18n="boostHelp"></div>
+            </div>
+            <div class="boost-value"><span id="boost-value">100</span><small>%</small></div>
+          </div>
+          <input type="range" class="range" id="boost" min="0" max="600" step="5" value="100" data-i18n-title="boost">
+          <div class="chips" id="boost-quick"></div>
+        </div>
+
+        <div class="section-head">
+          <h2 class="section-title" data-i18n="presets"></h2>
+          <button class="link-btn" id="preset-save" data-i18n="presetSave"></button>
+        </div>
+        <form class="row preset-form" id="preset-form" hidden>
+          <input class="input" id="preset-name" maxlength="24" data-i18n-placeholder="presetName" required>
+          <button class="button primary" type="submit" data-i18n="save"></button>
+          <button class="button" type="button" id="preset-cancel" data-i18n="cancel"></button>
+        </form>
+        <div class="chips" id="presets"></div>
+
+        <div class="section-head">
+          <h2 class="section-title" data-i18n="equalizer"></h2>
+          <button class="link-btn" id="eq-reset" data-i18n="reset"></button>
+        </div>
+        <div class="card eq-card">
+          <canvas id="eq-curve" class="eq-curve" height="120"></canvas>
+          <div class="eq-bands" id="eq-bands"></div>
+        </div>
+
+        <h2 class="section-title" data-i18n="output"></h2>
+        <div class="list">
+          <label class="item">
+            <span><span class="label" data-i18n="limiter"></span><span class="muted small" data-i18n="limiterHelp"></span></span>
+            <input type="checkbox" class="switch" id="limiter">
+          </label>
+          <label class="item">
+            <span class="label" data-i18n="mono"></span>
+            <input type="checkbox" class="switch" id="mono">
+          </label>
+          <div class="item">
+            <span class="label" data-i18n="balance"></span>
+            <div class="balance">
+              <span class="muted small">L</span>
+              <input type="range" class="range" id="balance" min="-100" max="100" step="5" value="0" data-i18n-title="balance">
+              <span class="muted small">R</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="mixer-foot">
+          <p class="muted small" data-i18n="mixerNote"></p>
+          <button class="button" id="mixer-off" data-i18n="mixerOff" hidden></button>
+        </div>
+      </section>
+
+      <!-- Settings -->
+      <section class="view" id="view-settings" role="tabpanel" hidden>
+        <h2 class="section-title" data-i18n="downloads"></h2>
+        <div class="list">
+          <div class="item">
+            <span><span class="label" data-i18n="location"></span><span class="muted small" data-i18n="locationHelp"></span></span>
+            <select class="select" data-setting="saveAs" data-type="bool">
+              <option value="true" data-i18n="locationAsk"></option>
+              <option value="false" data-i18n="locationDirect"></option>
+            </select>
+          </div>
+          <div class="item" id="subfolder-row">
+            <span><span class="label" data-i18n="subfolder"></span><span class="muted small" data-i18n="subfolderHelp"></span></span>
+            <input class="input narrow" data-setting="subfolder" maxlength="60" placeholder="Media+">
+          </div>
+          <div class="item">
+            <span class="label" data-i18n="naming"></span>
+            <select class="select" data-setting="naming">
+              <option value="title" data-i18n="namingTitle"></option>
+              <option value="site-date" data-i18n="namingSite"></option>
+            </select>
+          </div>
+        </div>
+
+        <h2 class="section-title" data-i18n="screenshots"></h2>
+        <div class="list">
+          <div class="item">
+            <span class="label" data-i18n="format"></span>
+            <select class="select" data-setting="shotFormat">
+              <option value="png">PNG</option>
+              <option value="jpeg">JPEG</option>
+              <option value="webp">WebP</option>
+            </select>
+          </div>
+          <div class="item">
+            <span class="label" data-i18n="afterShot"></span>
+            <select class="select" data-setting="shotAction">
+              <option value="download" data-i18n="shotDownload"></option>
+              <option value="copy" data-i18n="shotCopy"></option>
+              <option value="both" data-i18n="shotBoth"></option>
+            </select>
+          </div>
+        </div>
+
+        <h2 class="section-title" data-i18n="playback"></h2>
+        <div class="list">
+          <div class="item">
+            <span><span class="label" data-i18n="defaultSpeed"></span><span class="muted small" data-i18n="defaultSpeedHelp"></span></span>
+            <select class="select" data-setting="defaultSpeed" data-type="number" id="default-speed"></select>
+          </div>
+          <label class="item">
+            <span><span class="label" data-i18n="preservePitch"></span><span class="muted small" data-i18n="preservePitchHelp"></span></span>
+            <input type="checkbox" class="switch" data-setting="preservePitch">
+          </label>
+        </div>
+
+        <h2 class="section-title" data-i18n="tabMixer"></h2>
+        <div class="list">
+          <div class="item">
+            <span class="label" data-i18n="maxBoost"></span>
+            <select class="select" data-setting="maxBoost" data-type="number">
+              <option value="200">200 %</option>
+              <option value="300">300 %</option>
+              <option value="400">400 %</option>
+              <option value="600">600 %</option>
+            </select>
+          </div>
+        </div>
+
+        <h2 class="section-title" data-i18n="interface"></h2>
+        <div class="list">
+          <div class="item">
+            <span class="label" data-i18n="theme"></span>
+            <select class="select" data-setting="theme">
+              <option value="auto" data-i18n="themeAuto"></option>
+              <option value="dark" data-i18n="themeDark"></option>
+              <option value="light" data-i18n="themeLight"></option>
+            </select>
+          </div>
+          <div class="item">
+            <span><span class="label" data-i18n="shortcuts"></span><span class="muted small" id="shortcut-list"></span></span>
+            <button class="button" id="open-shortcuts" data-i18n="configure"></button>
+          </div>
+        </div>
+
+        <div class="settings-foot">
+          <button class="button" id="reset-settings" data-i18n="resetSettings"></button>
+        </div>
+      </section>
+    </main>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </div>
+</body>
+</html>

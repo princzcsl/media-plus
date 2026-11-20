@@ -1,0 +1,389 @@
+{
+  "extName": {
+    "message": "Media+"
+  },
+  "extDescription": {
+    "message": "Control the media playing in your browser: volume boost, equalizer with presets, loop, MP4 download, frame capture and source link."
+  },
+  "cmdOpen": {
+    "message": "Open Media+"
+  },
+  "cmdScreenshot": {
+    "message": "Capture the frame of the video on screen"
+  },
+  "cmdLoop": {
+    "message": "Turn loop on or off"
+  },
+  "cmdDownload": {
+    "message": "Download the media on screen"
+  },
+  "menuDownload": {
+    "message": "Download with Media+"
+  },
+  "menuScreenshot": {
+    "message": "Capture this frame"
+  },
+  "menuLoop": {
+    "message": "Loop on / off"
+  },
+  "menuSource": {
+    "message": "Open the media source"
+  },
+  "tabMedia": {
+    "message": "Media"
+  },
+  "tabMixer": {
+    "message": "Mixer"
+  },
+  "tabSettings": {
+    "message": "Settings"
+  },
+  "mixerActive": {
+    "message": "Mixer on"
+  },
+  "otherTabs": {
+    "message": "Other tabs playing"
+  },
+  "muteOthers": {
+    "message": "Mute all"
+  },
+  "noMedia": {
+    "message": "No media on this tab"
+  },
+  "noMediaHint": {
+    "message": "Start a video or a sound, it will show up here."
+  },
+  "restricted": {
+    "message": "Media+ can't act on this page"
+  },
+  "restrictedHint": {
+    "message": "Chrome pages and the Web Store are protected."
+  },
+  "kindVideo": {
+    "message": "Video"
+  },
+  "kindAudio": {
+    "message": "Audio"
+  },
+  "playPause": {
+    "message": "Play / pause"
+  },
+  "position": {
+    "message": "Position"
+  },
+  "mute": {
+    "message": "Mute"
+  },
+  "volume": {
+    "message": "Volume"
+  },
+  "speed": {
+    "message": "Speed"
+  },
+  "loop": {
+    "message": "Loop"
+  },
+  "abLoop": {
+    "message": "A-B loop: click at the start, then at the end"
+  },
+  "abSetA": {
+    "message": "Start set at $1, click again at the end"
+  },
+  "abSet": {
+    "message": "Looping $1 → $2"
+  },
+  "abCleared": {
+    "message": "A-B loop removed"
+  },
+  "abTooShort": {
+    "message": "The segment is too short"
+  },
+  "download": {
+    "message": "Download"
+  },
+  "downloadStarted": {
+    "message": "Download started"
+  },
+  "screenshot": {
+    "message": "Capture the frame"
+  },
+  "shotSaved": {
+    "message": "Frame saved ($1)"
+  },
+  "shotCopied": {
+    "message": "Frame copied ($1)"
+  },
+  "openSource": {
+    "message": "Open the source in a new tab"
+  },
+  "noSource": {
+    "message": "No source found for this media"
+  },
+  "pip": {
+    "message": "Picture-in-picture"
+  },
+  "record": {
+    "message": "Record as MP4"
+  },
+  "recordStop": {
+    "message": "Stop and save the recording"
+  },
+  "recordStarted": {
+    "message": "Recording… stop it with the same button"
+  },
+  "recordSaved": {
+    "message": "Recording saved"
+  },
+  "recordFromStart": {
+    "message": "Record from the start"
+  },
+  "recordNow": {
+    "message": "From here"
+  },
+  "showOnPage": {
+    "message": "Show on the page"
+  },
+  "open": {
+    "message": "Open"
+  },
+  "close": {
+    "message": "Close"
+  },
+  "mseDownload": {
+    "message": "This media is streamed in pieces (MSE), there is no single file to download. Record it while it plays (MP4), or use a stream the player loaded."
+  },
+  "mseSource": {
+    "message": "Streams loaded by the player, from its CDN:"
+  },
+  "detectedStreams": {
+    "message": "Detected streams"
+  },
+  "noStreams": {
+    "message": "No stream detected yet: let the media play a few seconds."
+  },
+  "muteTab": {
+    "message": "Mute the tab"
+  },
+  "goToTab": {
+    "message": "Go to the tab"
+  },
+  "boost": {
+    "message": "Volume boost"
+  },
+  "boostHelp": {
+    "message": "Up to 600 % for the whole tab"
+  },
+  "presets": {
+    "message": "Presets"
+  },
+  "presetSave": {
+    "message": "Save current"
+  },
+  "presetName": {
+    "message": "Preset name"
+  },
+  "presetSaved": {
+    "message": "Preset \"$1\" saved"
+  },
+  "presetLimit": {
+    "message": "$1 custom presets max"
+  },
+  "preset_flat": {
+    "message": "Flat"
+  },
+  "preset_bass": {
+    "message": "Bass+"
+  },
+  "preset_bassMax": {
+    "message": "Bass max"
+  },
+  "preset_treble": {
+    "message": "Treble+"
+  },
+  "preset_vocal": {
+    "message": "Voice"
+  },
+  "preset_movie": {
+    "message": "Movie"
+  },
+  "preset_music": {
+    "message": "Music"
+  },
+  "preset_fps": {
+    "message": "FPS"
+  },
+  "preset_night": {
+    "message": "Night"
+  },
+  "equalizer": {
+    "message": "Equalizer"
+  },
+  "reset": {
+    "message": "Reset"
+  },
+  "output": {
+    "message": "Output"
+  },
+  "limiter": {
+    "message": "Limiter"
+  },
+  "limiterHelp": {
+    "message": "Prevents distortion when boosting"
+  },
+  "mono": {
+    "message": "Mono"
+  },
+  "balance": {
+    "message": "Balance"
+  },
+  "mixerNote": {
+    "message": "The mixer processes all the sound of this tab. Chrome shows a sharing icon on the tab while it's on."
+  },
+  "mixerOff": {
+    "message": "Turn off"
+  },
+  "delete": {
+    "message": "Delete"
+  },
+  "save": {
+    "message": "Save"
+  },
+  "cancel": {
+    "message": "Cancel"
+  },
+  "downloads": {
+    "message": "Downloads"
+  },
+  "location": {
+    "message": "Location"
+  },
+  "locationHelp": {
+    "message": "Chrome remembers the last folder you picked"
+  },
+  "locationAsk": {
+    "message": "Ask every time"
+  },
+  "locationDirect": {
+    "message": "Downloads folder"
+  },
+  "subfolder": {
+    "message": "Subfolder"
+  },
+  "subfolderHelp": {
+    "message": "Inside Downloads, empty for none"
+  },
+  "naming": {
+    "message": "File names"
+  },
+  "namingTitle": {
+    "message": "Media title"
+  },
+  "namingSite": {
+    "message": "Site + date"
+  },
+  "screenshots": {
+    "message": "Captures"
+  },
+  "format": {
+    "message": "Format"
+  },
+  "afterShot": {
+    "message": "After a capture"
+  },
+  "shotDownload": {
+    "message": "Download"
+  },
+  "shotCopy": {
+    "message": "Copy"
+  },
+  "shotBoth": {
+    "message": "Copy and download"
+  },
+  "playback": {
+    "message": "Playback"
+  },
+  "defaultSpeed": {
+    "message": "Default speed"
+  },
+  "defaultSpeedHelp": {
+    "message": "Applied to every media that starts"
+  },
+  "preservePitch": {
+    "message": "Keep the pitch"
+  },
+  "preservePitchHelp": {
+    "message": "Voices don't sound sped up"
+  },
+  "maxBoost": {
+    "message": "Maximum boost"
+  },
+  "interface": {
+    "message": "Interface"
+  },
+  "theme": {
+    "message": "Theme"
+  },
+  "themeAuto": {
+    "message": "System"
+  },
+  "themeDark": {
+    "message": "Dark"
+  },
+  "themeLight": {
+    "message": "Light"
+  },
+  "shortcuts": {
+    "message": "Keyboard shortcuts"
+  },
+  "scOpen": {
+    "message": "open Media+"
+  },
+  "scShot": {
+    "message": "capture"
+  },
+  "scLoop": {
+    "message": "loop"
+  },
+  "scDownload": {
+    "message": "download"
+  },
+  "noShortcuts": {
+    "message": "None set"
+  },
+  "configure": {
+    "message": "Configure"
+  },
+  "resetSettings": {
+    "message": "Reset settings"
+  },
+  "settingsReset": {
+    "message": "Settings reset"
+  },
+  "errGeneric": {
+    "message": "Error:"
+  },
+  "errGone": {
+    "message": "This media is no longer on the page"
+  },
+  "errProtected": {
+    "message": "This video is protected by the site, capture it while it's visible in the main page"
+  },
+  "errOffscreen": {
+    "message": "Scroll the video into view first"
+  },
+  "errNoFrame": {
+    "message": "No image to capture yet"
+  },
+  "errNoVideo": {
+    "message": "Only works with a video"
+  },
+  "errGesture": {
+    "message": "Chrome refused: click the video on the page once, then try again"
+  },
+  "errCapture": {
+    "message": "The sound of this page can't be processed"
+  },
+  "errCaptureBusy": {
+    "message": "The sound of this tab is already captured by another extension"
+  }
+}

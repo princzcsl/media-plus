@@ -1,0 +1,389 @@
+{
+  "extName": {
+    "message": "Media+"
+  },
+  "extDescription": {
+    "message": "Contrôle les médias lus dans le navigateur : boost du volume, égaliseur avec presets, boucle, téléchargement MP4, capture d'image et lien vers la source."
+  },
+  "cmdOpen": {
+    "message": "Ouvrir Media+"
+  },
+  "cmdScreenshot": {
+    "message": "Capturer l'image de la vidéo à l'écran"
+  },
+  "cmdLoop": {
+    "message": "Activer ou couper la boucle"
+  },
+  "cmdDownload": {
+    "message": "Télécharger le média à l'écran"
+  },
+  "menuDownload": {
+    "message": "Télécharger avec Media+"
+  },
+  "menuScreenshot": {
+    "message": "Capturer cette image"
+  },
+  "menuLoop": {
+    "message": "Boucle activée / désactivée"
+  },
+  "menuSource": {
+    "message": "Ouvrir la source du média"
+  },
+  "tabMedia": {
+    "message": "Médias"
+  },
+  "tabMixer": {
+    "message": "Mixeur"
+  },
+  "tabSettings": {
+    "message": "Réglages"
+  },
+  "mixerActive": {
+    "message": "Mixeur actif"
+  },
+  "otherTabs": {
+    "message": "Autres onglets en lecture"
+  },
+  "muteOthers": {
+    "message": "Tout couper"
+  },
+  "noMedia": {
+    "message": "Aucun média sur cet onglet"
+  },
+  "noMediaHint": {
+    "message": "Lance une vidéo ou un son, il apparaîtra ici."
+  },
+  "restricted": {
+    "message": "Media+ ne peut pas agir sur cette page"
+  },
+  "restrictedHint": {
+    "message": "Les pages Chrome et le Web Store sont protégés."
+  },
+  "kindVideo": {
+    "message": "Vidéo"
+  },
+  "kindAudio": {
+    "message": "Audio"
+  },
+  "playPause": {
+    "message": "Lecture / pause"
+  },
+  "position": {
+    "message": "Position"
+  },
+  "mute": {
+    "message": "Couper le son"
+  },
+  "volume": {
+    "message": "Volume"
+  },
+  "speed": {
+    "message": "Vitesse"
+  },
+  "loop": {
+    "message": "Boucle"
+  },
+  "abLoop": {
+    "message": "Boucle A-B : clique au début, puis à la fin"
+  },
+  "abSetA": {
+    "message": "Début fixé à $1, reclique à la fin"
+  },
+  "abSet": {
+    "message": "Boucle de $1 à $2"
+  },
+  "abCleared": {
+    "message": "Boucle A-B retirée"
+  },
+  "abTooShort": {
+    "message": "Le segment est trop court"
+  },
+  "download": {
+    "message": "Télécharger"
+  },
+  "downloadStarted": {
+    "message": "Téléchargement lancé"
+  },
+  "screenshot": {
+    "message": "Capturer l'image"
+  },
+  "shotSaved": {
+    "message": "Image enregistrée ($1)"
+  },
+  "shotCopied": {
+    "message": "Image copiée ($1)"
+  },
+  "openSource": {
+    "message": "Ouvrir la source dans un nouvel onglet"
+  },
+  "noSource": {
+    "message": "Aucune source trouvée pour ce média"
+  },
+  "pip": {
+    "message": "Picture-in-picture"
+  },
+  "record": {
+    "message": "Enregistrer en MP4"
+  },
+  "recordStop": {
+    "message": "Arrêter et enregistrer"
+  },
+  "recordStarted": {
+    "message": "Enregistrement… arrête-le avec le même bouton"
+  },
+  "recordSaved": {
+    "message": "Enregistrement sauvegardé"
+  },
+  "recordFromStart": {
+    "message": "Enregistrer depuis le début"
+  },
+  "recordNow": {
+    "message": "À partir d'ici"
+  },
+  "showOnPage": {
+    "message": "Afficher sur la page"
+  },
+  "open": {
+    "message": "Ouvrir"
+  },
+  "close": {
+    "message": "Fermer"
+  },
+  "mseDownload": {
+    "message": "Ce média est diffusé en morceaux (MSE), il n'existe pas de fichier unique. Enregistre-le pendant la lecture (MP4) ou utilise un flux chargé par le lecteur."
+  },
+  "mseSource": {
+    "message": "Flux chargés par le lecteur, depuis son CDN :"
+  },
+  "detectedStreams": {
+    "message": "Flux détectés"
+  },
+  "noStreams": {
+    "message": "Aucun flux détecté pour l'instant : laisse le média jouer quelques secondes."
+  },
+  "muteTab": {
+    "message": "Couper l'onglet"
+  },
+  "goToTab": {
+    "message": "Aller à l'onglet"
+  },
+  "boost": {
+    "message": "Boost du volume"
+  },
+  "boostHelp": {
+    "message": "Jusqu'à 600 % pour tout l'onglet"
+  },
+  "presets": {
+    "message": "Presets"
+  },
+  "presetSave": {
+    "message": "Enregistrer l'actuel"
+  },
+  "presetName": {
+    "message": "Nom du preset"
+  },
+  "presetSaved": {
+    "message": "Preset « $1 » enregistré"
+  },
+  "presetLimit": {
+    "message": "$1 presets perso maximum"
+  },
+  "preset_flat": {
+    "message": "Plat"
+  },
+  "preset_bass": {
+    "message": "Basses+"
+  },
+  "preset_bassMax": {
+    "message": "Basses max"
+  },
+  "preset_treble": {
+    "message": "Aigus+"
+  },
+  "preset_vocal": {
+    "message": "Voix"
+  },
+  "preset_movie": {
+    "message": "Film"
+  },
+  "preset_music": {
+    "message": "Musique"
+  },
+  "preset_fps": {
+    "message": "FPS"
+  },
+  "preset_night": {
+    "message": "Nuit"
+  },
+  "equalizer": {
+    "message": "Égaliseur"
+  },
+  "reset": {
+    "message": "Réinitialiser"
+  },
+  "output": {
+    "message": "Sortie"
+  },
+  "limiter": {
+    "message": "Limiteur"
+  },
+  "limiterHelp": {
+    "message": "Évite la saturation avec le boost"
+  },
+  "mono": {
+    "message": "Mono"
+  },
+  "balance": {
+    "message": "Balance"
+  },
+  "mixerNote": {
+    "message": "Le mixeur traite tout le son de cet onglet. Chrome affiche une icône de partage sur l'onglet tant qu'il est actif."
+  },
+  "mixerOff": {
+    "message": "Désactiver"
+  },
+  "delete": {
+    "message": "Supprimer"
+  },
+  "save": {
+    "message": "Enregistrer"
+  },
+  "cancel": {
+    "message": "Annuler"
+  },
+  "downloads": {
+    "message": "Téléchargements"
+  },
+  "location": {
+    "message": "Emplacement"
+  },
+  "locationHelp": {
+    "message": "Chrome se souvient du dernier dossier choisi"
+  },
+  "locationAsk": {
+    "message": "Demander à chaque fois"
+  },
+  "locationDirect": {
+    "message": "Dossier Téléchargements"
+  },
+  "subfolder": {
+    "message": "Sous-dossier"
+  },
+  "subfolderHelp": {
+    "message": "Dans Téléchargements, vide pour aucun"
+  },
+  "naming": {
+    "message": "Noms des fichiers"
+  },
+  "namingTitle": {
+    "message": "Titre du média"
+  },
+  "namingSite": {
+    "message": "Site + date"
+  },
+  "screenshots": {
+    "message": "Captures"
+  },
+  "format": {
+    "message": "Format"
+  },
+  "afterShot": {
+    "message": "Après une capture"
+  },
+  "shotDownload": {
+    "message": "Télécharger"
+  },
+  "shotCopy": {
+    "message": "Copier"
+  },
+  "shotBoth": {
+    "message": "Copier et télécharger"
+  },
+  "playback": {
+    "message": "Lecture"
+  },
+  "defaultSpeed": {
+    "message": "Vitesse par défaut"
+  },
+  "defaultSpeedHelp": {
+    "message": "Appliquée à chaque média lancé"
+  },
+  "preservePitch": {
+    "message": "Garder la hauteur du son"
+  },
+  "preservePitchHelp": {
+    "message": "Les voix ne sonnent pas accélérées"
+  },
+  "maxBoost": {
+    "message": "Boost maximum"
+  },
+  "interface": {
+    "message": "Interface"
+  },
+  "theme": {
+    "message": "Thème"
+  },
+  "themeAuto": {
+    "message": "Système"
+  },
+  "themeDark": {
+    "message": "Sombre"
+  },
+  "themeLight": {
+    "message": "Clair"
+  },
+  "shortcuts": {
+    "message": "Raccourcis clavier"
+  },
+  "scOpen": {
+    "message": "ouvrir Media+"
+  },
+  "scShot": {
+    "message": "capture"
+  },
+  "scLoop": {
+    "message": "boucle"
+  },
+  "scDownload": {
+    "message": "téléchargement"
+  },
+  "noShortcuts": {
+    "message": "Aucun défini"
+  },
+  "configure": {
+    "message": "Configurer"
+  },
+  "resetSettings": {
+    "message": "Réinitialiser les réglages"
+  },
+  "settingsReset": {
+    "message": "Réglages réinitialisés"
+  },
+  "errGeneric": {
+    "message": "Erreur :"
+  },
+  "errGone": {
+    "message": "Ce média n'est plus sur la page"
+  },
+  "errProtected": {
+    "message": "Cette vidéo est protégée par le site, capture-la quand elle est visible dans la page principale"
+  },
+  "errOffscreen": {
+    "message": "Fais d'abord défiler la vidéo à l'écran"
+  },
+  "errNoFrame": {
+    "message": "Pas encore d'image à capturer"
+  },
+  "errNoVideo": {
+    "message": "Ne fonctionne qu'avec une vidéo"
+  },
+  "errGesture": {
+    "message": "Chrome a refusé : clique une fois sur la vidéo dans la page, puis réessaie"
+  },
+  "errCapture": {
+    "message": "Le son de cette page ne peut pas être traité"
+  },
+  "errCaptureBusy": {
+    "message": "Le son de cet onglet est déjà capturé par une autre extension"
+  }
+}
