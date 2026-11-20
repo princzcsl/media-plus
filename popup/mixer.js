@@ -53,10 +53,17 @@ export async function initMixer(tab, settings) {
 
   const live = $('audio-live');
   const enabledEl = $('mixer-enabled');
-  // On / off is per tab: turning the mixer off here leaves the other tabs as they are.
-  const offKey = `mixerOff:${tab.id}`;
-  let enabled = !(await chrome.storage.session.get(offKey))[offKey];
-  const saveEnabled = () => (enabled ? chrome.storage.session.remove(offKey) : chrome.storage.session.set({ [offKey]: true }));
+  // On / off is remembered per site and off on a site never seen. It only acts on this tab:
+  // a tab already being processed keeps going until its own switch is turned off.
+  const { mixerSites = {} } = await chrome.storage.local.get('mixerSites');
+  let enabled = active || (site ? mixerSites[site] === true : false);
+  async function saveEnabled() {
+    if (!site) return;
+    const { mixerSites: sites = {} } = await chrome.storage.local.get('mixerSites');
+    if (enabled) sites[site] = true;
+    else delete sites[site];
+    await chrome.storage.local.set({ mixerSites: sites });
+  }
   const boost = $('boost');
   const boostValue = $('boost-value');
   const canvas = $('eq-curve');

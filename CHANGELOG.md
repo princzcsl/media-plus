@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.6.1
+- The mixer switch is remembered per site, and the mixer is off on a site it has never been turned on for. A tab already being processed keeps going until its own switch is turned off
+
 ## 1.6.0
 - Download "Advanced options": maximum resolution and video codec for this download (best available, H.264 for editing software, VP9, AV1); the defaults are in the settings, where the codec replaces the old quality choice
 - The extension now builds the yt-dlp format choice and the companion only relays it: future format changes won't need a reinstall. Run `host/install.cmd` once more for this version
