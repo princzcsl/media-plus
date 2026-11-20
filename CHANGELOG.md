@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.0
+- Timeline glides between updates instead of jumping every second
+- Volume slider: a magnet catches 100 % from a few percent away
+- Voice: new spectral separation (left and right compared frequency by frequency), panned instruments keep their stereo, kick, bass and cymbals stay in karaoke
+- Beta bass engine to compare with the classic one: bell at 70 Hz instead of a shelf, rumble under 25 Hz cut, bass band compressed on its own, warmer harmonics for the bass enhancer
+
 ## 1.2.0
 - Equalizer: the curve now goes exactly through every slider value (the filter gains are solved for it), range ±14 dB
 - New look-ahead limiter: it doesn't touch the sound until it would clip, so heavy bass (rap…) no longer pumps

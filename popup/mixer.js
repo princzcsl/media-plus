@@ -124,7 +124,7 @@ export async function initMixer(tab, settings) {
       toast(captureError(err), 'error');
       // Nothing is applied when the capture fails: don't show settings that aren't real.
       if (!active) {
-        Object.assign(state, freshState(), { limiter: state.limiter });
+        Object.assign(state, freshState(), { limiter: state.limiter, bass: state.bass });
         render();
       }
     } finally {
@@ -248,7 +248,11 @@ export async function initMixer(tab, settings) {
   });
 
   const us = Float32Array.from({ length: CURVE_POINTS }, (_, k) => -0.5 + (k / (CURVE_POINTS - 1)) * BANDS.length);
-  const eqMath = createEq();
+  const eqMaths = { classic: createEq(48000, 'classic'), beta: createEq(48000, 'beta') };
+  const bassModeEl = $('bass-mode');
+  for (const btn of bassModeEl.querySelectorAll('button')) {
+    btn.addEventListener('click', () => { state.bass = btn.dataset.bass; commit(); });
+  }
   const curveFreqs = Array.from(us, freqAt);
   // Spectrum bars: 64 log bands from 30 Hz to 18 kHz (same split as the engine).
   const barU = Array.from({ length: 65 }, (_, i) => uAt(30 * 600 ** (i / 64)));
@@ -294,7 +298,7 @@ export async function initMixer(tab, settings) {
       g.stroke();
     }
 
-    const curve = eqMath.response(state.eq, curveFreqs);
+    const curve = eqMaths[state.bass === 'beta' ? 'beta' : 'classic'].response(state.eq, curveFreqs);
     const line = new Path2D();
     us.forEach((u, k) => {
       if (k) line.lineTo(x(u), y(curve[k]));
@@ -411,8 +415,7 @@ export async function initMixer(tab, settings) {
   balance.addEventListener('dblclick', () => { state.balance = 0; commit(); });
 
   offBtn.addEventListener('click', () => {
-    const keepLimiter = state.limiter;
-    Object.assign(state, freshState(), { limiter: keepLimiter });
+    Object.assign(state, freshState(), { limiter: state.limiter, bass: state.bass });
     commit();
   });
 
@@ -441,6 +444,7 @@ export async function initMixer(tab, settings) {
     paintRange(pitch);
     pitchValue.textContent = state.pitch ? t('semitones', `${state.pitch > 0 ? '+' : ''}${state.pitch}`) : t('pitchNormal');
     for (const btn of vocalEl.querySelectorAll('button')) btn.classList.toggle('on', btn.dataset.vocal === state.vocal);
+    for (const btn of bassModeEl.querySelectorAll('button')) btn.classList.toggle('on', btn.dataset.bass === state.bass);
     mono.checked = state.mono;
     if (Number(balance.value) !== state.balance && document.activeElement !== balance) balance.value = String(state.balance);
     paintRange(balance);

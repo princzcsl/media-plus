@@ -572,3 +572,7 @@ label.item { cursor: pointer; }
 .effect-value { font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
 .item.stacked { flex-direction: column; align-items: stretch; gap: 8px; }
 .m-spacer { flex: 1; }
+
+.bass-mode { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 12px 6px 2px; padding-top: 10px; border-top: 0.5px solid var(--hairline); }
+.bass-mode .segmented { flex-shrink: 0; width: 170px; }
+.bass-mode .small { display: block; margin-top: 1px; }

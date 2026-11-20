@@ -140,15 +140,16 @@ export function initMedia(tab, settings, mixer, host) {
 
     // Transport
     const playBtn = h('button', { class: 'icon-btn round', title: t('playPause'), onclick: () => op('toggle') });
-    const seek = h('input', { type: 'range', class: 'range', min: 0, max: 1000, step: 1, value: 0, 'aria-label': t('position') });
+    const seek = h('input', { type: 'range', class: 'range', min: 0, max: 10000, step: 1, value: 0, 'aria-label': t('position') });
     const timeEl = h('span', { class: 'time small muted' });
     seek.addEventListener('pointerdown', () => { seeking = true; });
     seek.addEventListener('input', () => {
       paintRange(seek);
-      if (cur.duration > 0) timeEl.textContent = `${fmtTime((seek.value / 1000) * cur.duration)} / ${fmtTime(cur.duration)}`;
+      shownSecond = -1;
+      if (cur.duration > 0) timeEl.textContent = `${fmtTime((seek.value / 10000) * cur.duration)} / ${fmtTime(cur.duration)}`;
     });
     seek.addEventListener('change', async () => {
-      if (cur.duration > 0) await op('seek', (seek.value / 1000) * cur.duration);
+      if (cur.duration > 0) await op('seek', (seek.value / 10000) * cur.duration);
       seeking = false;
     });
 
@@ -162,7 +163,11 @@ export function initMedia(tab, settings, mixer, host) {
     const toPos = (pct) => (pct <= 100 ? pct * 5 : 500 + ((pct - 100) / (settings.maxBoost - 100)) * 500);
     volume.addEventListener('input', () => {
       let pos = Number(volume.value);
-      if (Math.abs(pos - 500) < 18) pos = 500;
+      // Magnet: 100 % catches the thumb from a few percent away, and the thumb snaps to it.
+      if (Math.abs(pos - 500) < 32) {
+        pos = 500;
+        volume.value = '500';
+      }
       const pct = Math.round(toPercent(pos));
       if (pct <= 100) {
         sendVolume(pct / 100);
@@ -367,7 +372,25 @@ export function initMedia(tab, settings, mixer, host) {
 
     card.el = h('article', { class: 'media' }, head, body);
 
+    // Between two polls the position moves on locally, so the timeline glides.
+    let syncedAt = performance.now();
+    let shownSecond = -1;
+    function renderTime(time) {
+      seek.value = String(Math.round((time / cur.duration) * 10000));
+      paintRange(seek);
+      const second = Math.floor(time);
+      if (second !== shownSecond) {
+        shownSecond = second;
+        timeEl.textContent = `${fmtTime(time)} / ${fmtTime(cur.duration)}`;
+      }
+    }
+    card.tick = (now) => {
+      if (seeking || cur.paused || cur.ended || !(cur.duration > 0) || !card.el.classList.contains('open')) return;
+      renderTime(Math.min(cur.duration, cur.time + ((now - syncedAt) / 1000) * (cur.rate || 1)));
+    };
+
     function update(m) {
+      if (m.time != null) syncedAt = performance.now();
       cur = { ...cur, ...m, thumb: m.thumb ?? cur.thumb };
       card.el.classList.toggle('playing', !cur.paused);
       title.textContent = cur.title;
@@ -391,9 +414,13 @@ export function initMedia(tab, settings, mixer, host) {
       const hasDuration = cur.duration > 0;
       seek.disabled = !hasDuration;
       if (!seeking) {
-        seek.value = hasDuration ? Math.round((cur.time / cur.duration) * 1000) : 0;
-        paintRange(seek);
-        timeEl.textContent = cur.duration < 0 ? 'LIVE' : `${fmtTime(cur.time)} / ${fmtTime(cur.duration)}`;
+        if (hasDuration) renderTime(cur.time);
+        else {
+          seek.value = '0';
+          paintRange(seek);
+          timeEl.textContent = cur.duration < 0 ? 'LIVE' : `${fmtTime(cur.time)}`;
+          shownSecond = -1;
+        }
       }
 
       setIcon(muteBtn, cur.muted || cur.volume === 0 ? 'volumeOff' : 'volume', 18);
@@ -525,4 +552,12 @@ export function initMedia(tab, settings, mixer, host) {
   refreshOthers().catch(() => {});
   loop();
   addEventListener('pagehide', () => clearTimeout(timer));
+
+  const frame = (now) => {
+    if (document.visibilityState === 'visible' && !document.getElementById('view-media').hidden) {
+      for (const card of cards.values()) card.tick?.(now);
+    }
+    requestAnimationFrame(frame);
+  };
+  requestAnimationFrame(frame);
 }

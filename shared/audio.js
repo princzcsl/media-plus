@@ -9,6 +9,15 @@ export const bandType = (i) => (i === 0 ? 'lowshelf' : i === BANDS.length - 1 ? 
 // (almost) the full gain instead of half of it.
 export const bandCorner = (i) => (i === 0 ? 95 : i === BANDS.length - 1 ? 12500 : BANDS[i]);
 
+// Filter of each band. The beta bass engine uses a bell at 70 Hz for the lowest band
+// instead of a shelf, so the boost stays on the punch and doesn't pile up in the sub-bass.
+export function bandSpec(i, bass = 'classic') {
+  if (i === 0 && bass === 'beta') return { type: 'peaking', freq: 70, Q: 0.8 };
+  return { type: bandType(i), freq: bandCorner(i), Q: BAND_Q };
+}
+
+export const BASS_MODES = ['classic', 'beta'];
+
 export const bandLabel = (f) => (f >= 1000 ? `${f / 1000}k` : String(f));
 
 export const PITCH_RANGE = 12;
@@ -23,7 +32,8 @@ export const NEUTRAL = Object.freeze({
   enhancer: 0,
   normalize: false,
   vocal: 'off',
-  pitch: 0
+  pitch: 0,
+  bass: 'classic'
 });
 
 export const freshState = () => ({ ...NEUTRAL, eq: [...NEUTRAL.eq] });
@@ -47,7 +57,8 @@ export function cleanState(s) {
     enhancer: num(s.enhancer, 0, 0, 100),
     normalize: !!s.normalize,
     vocal: ['remove', 'isolate'].includes(s.vocal) ? s.vocal : 'off',
-    pitch: num(s.pitch, 0, -PITCH_RANGE, PITCH_RANGE)
+    pitch: num(s.pitch, 0, -PITCH_RANGE, PITCH_RANGE),
+    bass: s.bass === 'beta' ? 'beta' : 'classic'
   };
 }
 

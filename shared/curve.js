@@ -3,7 +3,7 @@
 // that value on the curve (two bands at +12 add up, a shelf only gives half its gain at
 // its corner). Like a proper graphic EQ, the filter gains are solved so the response at
 // each band's frequency is exactly what the slider says.
-import { BANDS, BAND_Q, bandType, bandCorner } from './audio.js';
+import { BANDS, bandSpec } from './audio.js';
 
 const FILTER_LIMIT = 30;
 
@@ -23,13 +23,14 @@ function gaussSolve(matrix, vector) {
   return a.map((row, i) => (row[i] ? row[n] / row[i] : 0));
 }
 
-export function createEq(sampleRate = 48000) {
+export function createEq(sampleRate = 48000, bass = 'classic') {
   const ctx = new OfflineAudioContext(1, 1, sampleRate);
   const filters = BANDS.map((_, i) => {
+    const spec = bandSpec(i, bass);
     const node = ctx.createBiquadFilter();
-    node.type = bandType(i);
-    node.frequency.value = bandCorner(i);
-    node.Q.value = BAND_Q;
+    node.type = spec.type;
+    node.frequency.value = spec.freq;
+    node.Q.value = spec.Q;
     return node;
   });
   const scratch = new Map();

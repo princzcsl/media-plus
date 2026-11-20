@@ -323,6 +323,18 @@
   "effects": {
     "message": "Effets"
   },
+  "bassMode": {
+    "message": "Moteur des basses"
+  },
+  "bassModeHelp": {
+    "message": "Bêta : cloche à 70 Hz plus percutante, infra-basses coupées, basses tenues"
+  },
+  "bassClassic": {
+    "message": "Classique"
+  },
+  "bassBeta": {
+    "message": "Bêta"
+  },
   "off": {
     "message": "Off"
   },

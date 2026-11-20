@@ -323,6 +323,18 @@
   "effects": {
     "message": "Effects"
   },
+  "bassMode": {
+    "message": "Bass engine"
+  },
+  "bassModeHelp": {
+    "message": "Beta: punchier bell at 70 Hz, sub rumble cut, bass kept tight"
+  },
+  "bassClassic": {
+    "message": "Classic"
+  },
+  "bassBeta": {
+    "message": "Beta"
+  },
   "off": {
     "message": "Off"
   },

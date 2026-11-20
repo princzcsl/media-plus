@@ -1,8 +1,8 @@
 // Audio chain shared by the offscreen engine (and the tests):
-// input → normalizer → headroom → [voice remove | isolate] → [mono] → 8-band EQ (+ bass enhancer)
+// input → normalizer → headroom → [voice] → [mono] → [sub filter] → 8-band EQ → [bass band compressor] (+ bass enhancer)
 //       → [pitch] → balance → boost → [night compressor] → [limiter] → analyser
 // Optional stages are only wired in when used, so they cost nothing when off.
-import { BANDS, BAND_Q, bandType, bandCorner } from './audio.js';
+import { BANDS, bandSpec } from './audio.js';
 import { createEq } from './curve.js';
 
 const RAMP = 0.015;
@@ -32,7 +32,7 @@ const filterNode = (ctx, type, frequency, Q = 0.707) => {
 };
 
 export function createChain(ctx, input) {
-  const eqMath = createEq(ctx.sampleRate);
+  const eqMaths = { classic: createEq(ctx.sampleRate, 'classic'), beta: createEq(ctx.sampleRate, 'beta') };
 
   // Normalizer: slow automatic gain towards a steady loudness.
   const normalizer = gainNode(ctx);
@@ -45,42 +45,37 @@ export function createChain(ctx, input) {
   const headroom = gainNode(ctx);
   normalizer.connect(headroom);
 
-  // Voice: mid (centre, where voices sit) and side (the rest) of the stereo image.
+  // Voice: spectral centre extraction (see worklets.js).
+  const vocal = new AudioWorkletNode(ctx, 'mp-vocal', { outputChannelCount: [2] });
+
   const vocalIn = gainNode(ctx);
-  const split = ctx.createChannelSplitter(2);
-  const mid = gainNode(ctx, 1, true);
-  const side = gainNode(ctx, 1, true);
-  const lMid = gainNode(ctx, 0.5); const rMid = gainNode(ctx, 0.5);
-  const lSide = gainNode(ctx, 0.5); const rSide = gainNode(ctx, -0.5);
-  split.connect(lMid, 0); split.connect(rMid, 1);
-  split.connect(lSide, 0); split.connect(rSide, 1);
-  lMid.connect(mid); rMid.connect(mid);
-  lSide.connect(side); rSide.connect(side);
-  // Remove: sides + the centre's low end (kick and bass usually sit in the middle too).
-  const removeMerge = ctx.createChannelMerger(2);
-  const midLow = filterNode(ctx, 'lowpass', 170);
-  const sideInvert = gainNode(ctx, -1, true);
-  mid.connect(midLow);
-  midLow.connect(removeMerge, 0, 0); midLow.connect(removeMerge, 0, 1);
-  side.connect(removeMerge, 0, 0);
-  side.connect(sideInvert); sideInvert.connect(removeMerge, 0, 1);
-  // Isolate: the centre only, in the voice range.
-  const isolateMerge = ctx.createChannelMerger(2);
-  const voiceHp = filterNode(ctx, 'highpass', 110);
-  const voiceLp = filterNode(ctx, 'lowpass', 8000);
-  voiceHp.connect(voiceLp);
-  voiceLp.connect(isolateMerge, 0, 0); voiceLp.connect(isolateMerge, 0, 1);
   headroom.connect(vocalIn);
 
   // Mono: both channels summed, sent to the left and the right.
-  const monoIn = gainNode(ctx);
   const monoSplit = ctx.createChannelSplitter(2);
   const monoSum = gainNode(ctx, 0.5, true);
   const monoMerge = ctx.createChannelMerger(2);
   monoSplit.connect(monoSum, 0); monoSplit.connect(monoSum, 1);
   monoSum.connect(monoMerge, 0, 0); monoSum.connect(monoMerge, 0, 1);
 
-  const filters = BANDS.map((_, i) => filterNode(ctx, bandType(i), bandCorner(i), BAND_Q));
+  const filters = BANDS.map((_, i) => {
+    const spec = bandSpec(i);
+    return filterNode(ctx, spec.type, spec.freq, spec.Q);
+  });
+  let bassMode = 'classic';
+
+  // Beta bass: rumble below 25 Hz removed (it only eats headroom), and the low band
+  // (under 150 Hz, Linkwitz-Riley split) gets its own gentle compressor, so a bass boost
+  // stays tight instead of pushing the whole mix into the limiter.
+  const subsonic = filterNode(ctx, 'highpass', 25);
+  const xLow1 = filterNode(ctx, 'lowpass', 150); const xLow2 = filterNode(ctx, 'lowpass', 150);
+  const xHigh1 = filterNode(ctx, 'highpass', 150); const xHigh2 = filterNode(ctx, 'highpass', 150);
+  const lowComp = new AudioWorkletNode(ctx, 'mp-comp', {
+    outputChannelCount: [2],
+    processorOptions: { threshold: -16, ratio: 2.5, knee: 8, attack: 0.015, release: 0.16 }
+  });
+  xLow1.connect(xLow2); xLow2.connect(lowComp);
+  xHigh1.connect(xHigh2);
   for (let i = 0; i < filters.length - 1; i++) filters[i].connect(filters[i + 1]);
   const eqOut = filters[filters.length - 1];
 
@@ -90,12 +85,16 @@ export function createChain(ctx, input) {
   const enhLow = filterNode(ctx, 'lowpass', 140);
   const enhDrive = gainNode(ctx, 3);
   const shaper = ctx.createWaveShaper();
-  const curve = new Float32Array(1024);
-  for (let i = 0; i < curve.length; i++) {
-    const x = (i / (curve.length - 1)) * 2 - 1;
-    curve[i] = Math.tanh(2.5 * x) / Math.tanh(2.5);
+  // Classic: symmetric saturation (odd harmonics). Beta: asymmetric, mostly the octave
+  // above, which the ear reads as a deeper, rounder fundamental.
+  const curves = { classic: new Float32Array(1024), beta: new Float32Array(1024) };
+  for (let i = 0; i < 1024; i++) {
+    const x = (i / 1023) * 2 - 1;
+    curves.classic[i] = Math.tanh(2.5 * x) / Math.tanh(2.5);
+    curves.beta[i] = 0.6 * Math.tanh(1.5 * x) + 0.8 * x * x - 0.25;
   }
-  shaper.curve = curve;
+  shaper.curve = curves.classic;
+  let shaperMode = 'classic';
   shaper.oversample = '4x';
   const enhHigh = filterNode(ctx, 'highpass', 120);
   const enhTop = filterNode(ctx, 'lowpass', 1500);
@@ -127,26 +126,36 @@ export function createChain(ctx, input) {
   let wiring = '';
 
   function rewire(s) {
-    const key = [s.vocal, !!s.mono, !!s.enhancer, !!s.pitch, !!s.night, !!s.limiter].join('|');
+    const key = [s.vocal, !!s.mono, !!s.enhancer, !!s.pitch, !!s.night, !!s.limiter, s.bass].join('|');
     if (key === wiring) return;
     wiring = key;
-    for (const node of [vocalIn, removeMerge, isolateMerge, mid, monoIn, monoMerge, eqOut, mix, pitch, boost, nightMakeup, limiter]) node.disconnect();
-    // Fixed links that the disconnects above cut.
-    mid.connect(midLow);
-    eqOut.connect(mix);
+    for (const node of [vocalIn, vocal, monoMerge, subsonic, eqOut, lowComp, xHigh2, mix, pitch, boost, nightMakeup, limiter]) node.disconnect();
+    const beta = s.bass === 'beta';
 
     let tail = vocalIn;
     if (s.vocal === 'remove' || s.vocal === 'isolate') {
-      vocalIn.connect(split);
-      if (s.vocal === 'isolate') mid.connect(voiceHp);
-      tail = s.vocal === 'remove' ? removeMerge : isolateMerge;
+      vocalIn.connect(vocal);
+      tail = vocal;
     }
     if (s.mono) {
       tail.connect(monoSplit);
       tail = monoMerge;
     }
+    if (beta) {
+      tail.connect(subsonic);
+      tail = subsonic;
+    }
     tail.connect(filters[0]);
-    if (s.enhancer) eqOut.connect(enhLow);
+    if (beta) {
+      eqOut.connect(xLow1);
+      eqOut.connect(xHigh1);
+      lowComp.connect(mix);
+      xHigh2.connect(mix);
+      if (s.enhancer) lowComp.connect(enhLow);
+    } else {
+      eqOut.connect(mix);
+      if (s.enhancer) eqOut.connect(enhLow);
+    }
 
     tail = mix;
     if (s.pitch) {
@@ -193,10 +202,26 @@ export function createChain(ctx, input) {
 
   function apply(s) {
     const now = ctx.currentTime;
-    const gains = eqMath.solve(s.eq);
+    const mode = s.bass === 'beta' ? 'beta' : 'classic';
+    if (mode !== bassMode) {
+      bassMode = mode;
+      const spec = bandSpec(0, mode);
+      filters[0].type = spec.type;
+      filters[0].frequency.setValueAtTime(spec.freq, now);
+      filters[0].Q.setValueAtTime(spec.Q, now);
+    }
+    if (mode !== shaperMode) {
+      shaperMode = mode;
+      shaper.curve = curves[mode];
+      enhHigh.frequency.setValueAtTime(mode === 'beta' ? 90 : 120, now);
+    }
+    const math = eqMaths[mode];
+    const gains = math.solve(s.eq);
     filters.forEach((f, i) => f.gain.setTargetAtTime(gains[i], now, RAMP));
-    const peak = s.limiter ? eqMath.peak(s.eq) : 0;
-    headroom.gain.setTargetAtTime(dbToGain(-Math.max(0, peak - 3) * 0.5), now, RAMP);
+    const peak = s.limiter ? math.peak(s.eq) : 0;
+    const room = mode === 'beta' ? -Math.max(0, peak - 6) * 0.35 : -Math.max(0, peak - 3) * 0.5;
+    headroom.gain.setTargetAtTime(dbToGain(room), now, RAMP);
+    vocal.parameters.get('mode').setValueAtTime(s.vocal === 'isolate' ? 2 : 1, now);
     enhAmount.gain.setTargetAtTime((s.enhancer || 0) / 100 * 1.4, now, RAMP);
     pitch.parameters.get('ratio').setValueAtTime(2 ** ((s.pitch || 0) / 12), now);
     boost.gain.setTargetAtTime(Math.max(0, s.boost) / 100, now, RAMP);
@@ -226,9 +251,9 @@ export function createChain(ctx, input) {
   function dispose() {
     normalizeLoop(false);
     input.disconnect();
-    for (const node of [meter, normalizer, headroom, vocalIn, split, mid, side, lMid, rMid, lSide, rSide, removeMerge, midLow,
-      sideInvert, isolateMerge, voiceHp, voiceLp, monoIn, monoSplit, monoSum, monoMerge, ...filters, mix, enhLow, enhDrive,
-      shaper, enhHigh, enhTop, enhAmount, pitch, balance, boost, night, nightMakeup, limiter, analyser]) {
+    for (const node of [meter, normalizer, headroom, vocalIn, monoSplit, monoSum, monoMerge, ...filters, mix, enhLow, enhDrive,
+      shaper, enhHigh, enhTop, enhAmount, pitch, balance, boost, night, nightMakeup, limiter, analyser, vocal, subsonic,
+      xLow1, xLow2, xHigh1, xHigh2, lowComp]) {
       node.disconnect();
     }
   }
