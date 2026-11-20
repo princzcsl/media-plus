@@ -2,8 +2,8 @@
 // input → normalizer → headroom → [voice] → [mono] → [sub filter] → 8-band EQ → [bass band compressor] (+ bass enhancer)
 //       → [pitch] → balance → boost → [night compressor] → [limiter] → analyser
 // Optional stages are only wired in when used, so they cost nothing when off.
-import { BANDS, bandSpec } from './audio.js';
-import { createEq } from './curve.js';
+import { BANDS, bandSpec, shapeKey } from './audio.js';
+import { eqCache } from './curve.js';
 
 const RAMP = 0.015;
 const dbToGain = (db) => 10 ** (db / 20);
@@ -32,7 +32,7 @@ const filterNode = (ctx, type, frequency, Q = 0.707) => {
 };
 
 export function createChain(ctx, input) {
-  const eqMaths = { shelf: createEq(ctx.sampleRate, 'shelf'), bell: createEq(ctx.sampleRate, 'bell') };
+  const eqFor = eqCache(ctx.sampleRate);
 
   // Normalizer: slow automatic gain towards a steady loudness.
   const normalizer = gainNode(ctx);
@@ -203,19 +203,20 @@ export function createChain(ctx, input) {
   function apply(s) {
     const now = ctx.currentTime;
     const mode = s.bass === 'bell' ? 'bell' : 'shelf';
-    if (mode !== bassMode) {
-      bassMode = mode;
-      const spec = bandSpec(0, mode);
+    const key = shapeKey(s);
+    if (key !== bassMode) {
+      bassMode = key;
+      const spec = bandSpec(0, s);
       filters[0].type = spec.type;
-      filters[0].frequency.setValueAtTime(spec.freq, now);
-      filters[0].Q.setValueAtTime(spec.Q, now);
+      filters[0].frequency.setTargetAtTime(spec.freq, now, RAMP);
+      filters[0].Q.setTargetAtTime(spec.Q, now, RAMP);
     }
     if (mode !== shaperMode) {
       shaperMode = mode;
       shaper.curve = curves[mode];
       enhHigh.frequency.setValueAtTime(mode === 'bell' ? 90 : 120, now);
     }
-    const math = eqMaths[mode];
+    const math = eqFor(s);
     const gains = math.solve(s.eq);
     filters.forEach((f, i) => f.gain.setTargetAtTime(gains[i], now, RAMP));
     const peak = s.limiter ? math.peak(s.eq) : 0;

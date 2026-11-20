@@ -38,7 +38,6 @@ for (const tab of tabs) {
   tab.insertAdjacentHTML('afterbegin', iconSvg(tab.dataset.icon, 16));
   tab.addEventListener('click', () => show(tab.dataset.view));
 }
-document.getElementById('audio-live').addEventListener('click', () => show('mixer'));
 
 let lastView = 'media';
 try { lastView = localStorage.getItem('view') || 'media'; } catch { /* storage off */ }

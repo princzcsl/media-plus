@@ -1,7 +1,7 @@
 import { h, toast, send, paintRange, setIcon } from './ui.js';
 import { t } from '../shared/i18n.js';
-import { BANDS, EQ_RANGE, PITCH_RANGE, bandLabel, PRESETS, freshState, isNeutral, matchesPreset, cleanState, fitEq, clampDb } from '../shared/audio.js';
-import { createEq } from '../shared/curve.js';
+import { BANDS, BELL, EQ_RANGE, PITCH_RANGE, bandLabel, PRESETS, freshState, isNeutral, matchesPreset, cleanState, fitEq, clampDb } from '../shared/audio.js';
+import { eqCache } from '../shared/curve.js';
 import { getCustomPresets, saveCustomPresets } from '../shared/settings.js';
 
 const MAX_CUSTOM = 12;
@@ -52,7 +52,8 @@ export async function initMixer(tab, settings) {
   const site = siteOf(tab.url);
 
   const live = $('audio-live');
-  const offBtn = $('mixer-off');
+  const enabledEl = $('mixer-enabled');
+  let enabled = (await chrome.storage.local.get('mixerEnabled')).mixerEnabled !== false;
   const boost = $('boost');
   const boostValue = $('boost-value');
   const canvas = $('eq-curve');
@@ -61,15 +62,14 @@ export async function initMixer(tab, settings) {
 
   const memoryKey = () => (settings.rememberMixer === 'site' ? (site ? `mixer:site:${site}` : null) : settings.rememberMixer === 'global' ? 'mixer:global' : null);
 
-  let rememberTimer = null;
+  // Saved right away (a closing popup would cancel a delayed save). The volume is never
+  // kept: every new tab starts at 100 %, the site's own sound.
   function remember() {
     const key = memoryKey();
     if (!key) return;
-    clearTimeout(rememberTimer);
-    rememberTimer = setTimeout(() => {
-      if (isNeutral(state)) chrome.storage.local.remove(key);
-      else chrome.storage.local.set({ [key]: cleanState(state) });
-    }, 400);
+    const kept = { ...cleanState(state), boost: 100 };
+    if (isNeutral(kept)) chrome.storage.local.remove(key);
+    else chrome.storage.local.set({ [key]: kept });
   }
 
   // ---- Sync with the audio engine (one request in flight, latest state wins) ----
@@ -79,7 +79,7 @@ export async function initMixer(tab, settings) {
 
   async function sync() {
     const snapshot = structuredClone(state);
-    if (isNeutral(snapshot)) {
+    if (!enabled || isNeutral(snapshot)) {
       if (active) {
         await send({ type: 'audio:stop', tabId: tab.id });
         active = false;
@@ -124,7 +124,7 @@ export async function initMixer(tab, settings) {
       toast(captureError(err), 'error');
       // Nothing is applied when the capture fails: don't show settings that aren't real.
       if (!active) {
-        Object.assign(state, freshState(), { limiter: state.limiter, bass: state.bass });
+        enabled = false;
         render();
       }
     } finally {
@@ -135,11 +135,24 @@ export async function initMixer(tab, settings) {
 
   function renderStatus() {
     live.hidden = !active;
-    offBtn.hidden = !active;
+    enabledEl.checked = enabled;
+    document.getElementById('view-mixer').classList.toggle('mixer-off', !enabled);
     spectrumLoop();
   }
 
+  enabledEl.addEventListener('change', () => {
+    enabled = enabledEl.checked;
+    chrome.storage.local.set({ mixerEnabled: enabled });
+    renderStatus();
+    push();
+  });
+
   function commit({ save = true } = {}) {
+    // Touching a setting while the mixer is off turns it back on.
+    if (!enabled && save) {
+      enabled = true;
+      chrome.storage.local.set({ mixerEnabled: true });
+    }
     render();
     push();
     if (save) remember();
@@ -259,7 +272,7 @@ export async function initMixer(tab, settings) {
   });
 
   const us = Float32Array.from({ length: CURVE_POINTS }, (_, k) => -0.5 + (k / (CURVE_POINTS - 1)) * BANDS.length);
-  const eqMaths = { shelf: createEq(48000, 'shelf'), bell: createEq(48000, 'bell') };
+  const eqFor = eqCache(48000);
   const curveFreqs = Array.from(us, freqAt);
   // Spectrum bars: 64 log bands from 30 Hz to 18 kHz (same split as the engine).
   const barU = Array.from({ length: 65 }, (_, i) => uAt(30 * 600 ** (i / 64)));
@@ -305,7 +318,7 @@ export async function initMixer(tab, settings) {
       g.stroke();
     }
 
-    const curve = eqMaths[state.bass === 'bell' ? 'bell' : 'shelf'].response(state.eq, curveFreqs);
+    const curve = eqFor(state).response(state.eq, curveFreqs);
     const line = new Path2D();
     us.forEach((u, k) => {
       if (k) line.lineTo(x(u), y(curve[k]));
@@ -421,10 +434,17 @@ export async function initMixer(tab, settings) {
   });
   balance.addEventListener('dblclick', () => { state.balance = 0; commit(); });
 
-  offBtn.addEventListener('click', () => {
-    Object.assign(state, freshState(), { limiter: state.limiter, bass: state.bass });
-    commit();
-  });
+  // ---- Bell (lowest band) ----
+
+  const bellRow = $('bell-row');
+  const bellFreq = $('bell-freq');
+  const bellWidth = $('bell-width');
+  Object.assign(bellFreq, { min: BELL.minFreq, max: BELL.maxFreq });
+  Object.assign(bellWidth, { min: BELL.minWidth, max: BELL.maxWidth });
+  bellFreq.addEventListener('input', () => { state.bellFreq = Number(bellFreq.value); commit(); });
+  bellWidth.addEventListener('input', () => { state.bellWidth = Number(bellWidth.value); commit(); });
+  bellFreq.addEventListener('dblclick', () => { state.bellFreq = BELL.freq; commit(); });
+  bellWidth.addEventListener('dblclick', () => { state.bellWidth = BELL.width; commit(); });
 
   // ---- Render ----
 
@@ -453,6 +473,13 @@ export async function initMixer(tab, settings) {
     for (const btn of vocalEl.querySelectorAll('button')) btn.classList.toggle('on', btn.dataset.vocal === state.vocal);
     setIcon(shapeBtn, state.bass === 'bell' ? 'bell' : 'shelf', 14);
     shapeBtn.classList.toggle('on', state.bass === 'bell');
+    bellRow.hidden = state.bass !== 'bell';
+    if (document.activeElement !== bellFreq) bellFreq.value = String(state.bellFreq);
+    if (document.activeElement !== bellWidth) bellWidth.value = String(state.bellWidth);
+    paintRange(bellFreq);
+    paintRange(bellWidth);
+    $('bell-freq-value').textContent = `${state.bellFreq} Hz`;
+    $('bell-width-value').textContent = t('octaves', state.bellWidth.toFixed(1));
     shapeBtn.setAttribute('aria-label', `${t('bassShape')} : ${t(state.bass === 'bell' ? 'bassBell' : 'bassShelf')}`);
     shapeBtn.title = shapeBtn.getAttribute('aria-label');
     mono.checked = state.mono;
@@ -469,11 +496,11 @@ export async function initMixer(tab, settings) {
   renderStatus();
 
   // Apply what was remembered for this site when the tab isn't processed yet.
-  if (!active) {
+  if (!active && enabled) {
     const key = memoryKey();
     const stored = key ? (await chrome.storage.local.get(key))[key] : null;
     if (stored && !isNeutral(cleanState(stored))) {
-      Object.assign(state, cleanState(stored));
+      Object.assign(state, cleanState(stored), { boost: state.boost });
       commit({ save: false });
       toast(t(settings.rememberMixer === 'site' ? 'mixerRestoredSite' : 'mixerRestored', site || ''));
     }

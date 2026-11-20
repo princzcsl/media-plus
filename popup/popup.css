@@ -591,3 +591,43 @@ label.item { cursor: pointer; }
 }
 .shape-btn:hover { color: var(--text); background: var(--surface-3); }
 .shape-btn.on, .shape-btn.on:hover { color: #fff; background: var(--accent); }
+
+/* Header switch for the mixer */
+.mixer-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 4px 4px 12px;
+  font-size: 12.5px;
+  font-weight: 650;
+  background: rgba(var(--tint), 0.06);
+  border-radius: 99px;
+  cursor: pointer;
+}
+.mixer-toggle .live-dot { color: var(--green); }
+.mixer-toggle .switch { transform: scale(0.85); transform-origin: right center; }
+#view-mixer.mixer-off .card, #view-mixer.mixer-off .list, #view-mixer.mixer-off .chips { opacity: 0.55; }
+
+/* Timeline drawn with transforms so it glides */
+.seek { position: relative; flex: 1; min-width: 0; height: 18px; }
+.seek-track { position: absolute; left: 0; right: 0; top: 7px; height: 4px; overflow: hidden; background: var(--surface-3); border-radius: 99px; }
+.seek-fill { position: absolute; inset: 0; background: var(--accent); transform-origin: left center; transform: scaleX(0); will-change: transform; }
+.seek-thumb {
+  position: absolute;
+  top: 2px;
+  left: 0;
+  width: 14px;
+  height: 14px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+  will-change: transform;
+}
+.seek-input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.seek:hover .seek-thumb { box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.12), 0 1px 4px rgba(0, 0, 0, 0.4); }
+
+/* Bell settings under the equalizer */
+.bell-row { display: flex; flex-direction: column; gap: 6px; margin: 10px 6px 2px; padding-top: 10px; border-top: 0.5px solid var(--hairline); }
+.bell-control { display: grid; grid-template-columns: 70px 1fr 64px; align-items: center; gap: 8px; }
+.bell-control .effect-value { text-align: right; }

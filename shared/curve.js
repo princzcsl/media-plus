@@ -3,7 +3,7 @@
 // that value on the curve (two bands at +12 add up, a shelf only gives half its gain at
 // its corner). Like a proper graphic EQ, the filter gains are solved so the response at
 // each band's frequency is exactly what the slider says.
-import { BANDS, bandSpec } from './audio.js';
+import { BANDS, bandSpec, shapeKey } from './audio.js';
 
 const FILTER_LIMIT = 30;
 
@@ -23,10 +23,10 @@ function gaussSolve(matrix, vector) {
   return a.map((row, i) => (row[i] ? row[n] / row[i] : 0));
 }
 
-export function createEq(sampleRate = 48000, bass = 'shelf') {
+export function createEq(sampleRate = 48000, shape = {}) {
   const ctx = new OfflineAudioContext(1, 1, sampleRate);
   const filters = BANDS.map((_, i) => {
-    const spec = bandSpec(i, bass);
+    const spec = bandSpec(i, shape);
     const node = ctx.createBiquadFilter();
     node.type = spec.type;
     node.frequency.value = spec.freq;
@@ -91,3 +91,18 @@ export function createEq(sampleRate = 48000, bass = 'shelf') {
 }
 
 const PROBE = Array.from({ length: 48 }, (_, k) => 30 * 600 ** (k / 47));
+
+// One EQ model per band shape, the last few kept (bell settings change while dragging).
+export function eqCache(sampleRate = 48000) {
+  const cache = new Map();
+  return (shape) => {
+    const key = shapeKey(shape);
+    let eq = cache.get(key);
+    if (!eq) {
+      eq = createEq(sampleRate, shape);
+      cache.set(key, eq);
+      if (cache.size > 6) cache.delete(cache.keys().next().value);
+    }
+    return eq;
+  };
+}

@@ -78,7 +78,7 @@
     "message": "Volume"
   },
   "volumeHelp": {
-    "message": "100 % (le milieu) = le volume normal du site, au-delà le son de l'onglet est boosté. Double-clic pour revenir à 100 %."
+    "message": "Volume de l'onglet, en plus du lecteur du site : 100 % (le milieu) = le son du site sans changement. Double-clic pour revenir à 100 %."
   },
   "speed": {
     "message": "Vitesse"
@@ -204,7 +204,7 @@
     "message": "Boost du volume"
   },
   "boostHelp": {
-    "message": "Jusqu'à $1 % pour tout l'onglet"
+    "message": "100 % = le son du site sans changement, jusqu'à $1 %"
   },
   "presets": {
     "message": "Presets"
@@ -328,6 +328,24 @@
   },
   "effects": {
     "message": "Effets"
+  },
+  "bell": {
+    "message": "Cloche de la bande grave"
+  },
+  "bellFreq": {
+    "message": "Centre"
+  },
+  "bellWidth": {
+    "message": "Largeur"
+  },
+  "octaves": {
+    "message": "$1 oct."
+  },
+  "tabVolume": {
+    "message": "Volume de l'onglet"
+  },
+  "mixerToggleHelp": {
+    "message": "Active ou coupe tout le mixeur, tes réglages sont gardés"
   },
   "bassShape": {
     "message": "Forme de la bande 60 Hz"

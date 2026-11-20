@@ -14,9 +14,11 @@
         <img src="../icons/48.png" alt="" width="30" height="30">
         <span class="brand-name">Media+</span>
       </div>
-      <button class="live" id="audio-live" data-go="mixer" hidden>
-        <span class="live-dot"></span><span data-i18n="mixerActive"></span>
-      </button>
+      <label class="mixer-toggle" id="mixer-toggle" data-i18n-title="mixerToggleHelp">
+        <span class="live-dot" id="audio-live" hidden></span>
+        <span data-i18n="tabMixer"></span>
+        <span class="switch"><input type="checkbox" id="mixer-enabled"><span></span></span>
+      </label>
     </header>
 
     <nav class="tabs" role="tablist">
@@ -44,12 +46,12 @@
         <div class="card boost-card">
           <div class="row space">
             <div>
-              <div class="label" data-i18n="boost"></div>
+              <div class="label" data-i18n="tabVolume"></div>
               <div class="muted small" id="boost-help"></div>
             </div>
             <div class="boost-value"><span id="boost-value">100</span><small>%</small></div>
           </div>
-          <input type="range" class="range" id="boost" min="0" max="600" step="5" value="100" data-i18n-title="boost">
+          <input type="range" class="range" id="boost" min="0" max="600" step="1" value="100" data-i18n-title="boost">
           <div class="chips" id="boost-quick"></div>
         </div>
 
@@ -71,6 +73,19 @@
         <div class="card eq-card">
           <canvas id="eq-curve" class="eq-curve"></canvas>
           <div class="eq-bands" id="eq-bands"></div>
+          <div class="bell-row" id="bell-row" hidden>
+            <span class="label small" data-i18n="bell"></span>
+            <div class="bell-control">
+              <span class="small muted" data-i18n="bellFreq"></span>
+              <input type="range" class="range" id="bell-freq" step="1" data-i18n-title="bellFreq">
+              <span class="small effect-value" id="bell-freq-value"></span>
+            </div>
+            <div class="bell-control">
+              <span class="small muted" data-i18n="bellWidth"></span>
+              <input type="range" class="range" id="bell-width" step="0.1" data-i18n-title="bellWidth">
+              <span class="small effect-value" id="bell-width-value"></span>
+            </div>
+          </div>
         </div>
 
         <h2 class="section-title" data-i18n="effects"></h2>
@@ -129,7 +144,6 @@
 
         <div class="mixer-foot">
           <p class="muted small" data-i18n="mixerNote"></p>
-          <button class="button" id="mixer-off" data-i18n="mixerOff" hidden></button>
         </div>
       </section>
 

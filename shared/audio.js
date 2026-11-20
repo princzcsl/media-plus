@@ -12,10 +12,21 @@ export const bandCorner = (i) => (i === 0 ? 95 : i === BANDS.length - 1 ? 12500 
 // Filter of each band. The lowest band is a shelf (even lift of everything below, like the
 // Harman target) or a wide bell at 70 Hz (punch, without piling up sub-bass; comes with a
 // rumble filter and its own gentle compressor in the engine).
-export function bandSpec(i, bass = 'shelf') {
-  if (i === 0 && bass === 'bell') return { type: 'peaking', freq: 70, Q: 0.42 };
+// The bell's centre and width (in octaves) can be set by the user.
+export const BELL = Object.freeze({ freq: 70, width: 2.9, minFreq: 35, maxFreq: 150, minWidth: 0.8, maxWidth: 3.5 });
+
+// Q of a peaking filter for a bandwidth in octaves.
+export const widthToQ = (oct) => Math.sqrt(2 ** oct) / (2 ** oct - 1);
+
+// `shape` is a mixer state (or anything with bass / bellFreq / bellWidth).
+export function bandSpec(i, shape = {}) {
+  if (i === 0 && shape.bass === 'bell') {
+    return { type: 'peaking', freq: shape.bellFreq || BELL.freq, Q: widthToQ(shape.bellWidth || BELL.width) };
+  }
   return { type: bandType(i), freq: bandCorner(i), Q: BAND_Q };
 }
+
+export const shapeKey = (s = {}) => (s.bass === 'bell' ? `bell|${s.bellFreq || BELL.freq}|${s.bellWidth || BELL.width}` : 'shelf');
 
 export const BASS_SHAPES = ['shelf', 'bell'];
 
@@ -34,7 +45,9 @@ export const NEUTRAL = Object.freeze({
   normalize: false,
   vocal: 'off',
   pitch: 0,
-  bass: 'shelf'
+  bass: 'shelf',
+  bellFreq: BELL.freq,
+  bellWidth: BELL.width
 });
 
 export const freshState = () => ({ ...NEUTRAL, eq: [...NEUTRAL.eq] });
@@ -59,7 +72,9 @@ export function cleanState(s) {
     normalize: !!s.normalize,
     vocal: ['remove', 'isolate'].includes(s.vocal) ? s.vocal : 'off',
     pitch: num(s.pitch, 0, -PITCH_RANGE, PITCH_RANGE),
-    bass: s.bass === 'bell' || s.bass === 'beta' ? 'bell' : 'shelf'
+    bass: s.bass === 'bell' || s.bass === 'beta' ? 'bell' : 'shelf',
+    bellFreq: num(s.bellFreq, BELL.freq, BELL.minFreq, BELL.maxFreq),
+    bellWidth: num(s.bellWidth, BELL.width, BELL.minWidth, BELL.maxWidth)
   };
 }
 

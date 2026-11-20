@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.5.0
+- Timeline drawn with transforms: it glides by fractions of a pixel instead of moving pixel by pixel
+- The media volume is the tab's volume on top of the site's player: 100 % is always the site's sound untouched, it no longer follows the site's own slider (51 %…), and a new tab starts at 100 %
+- Switch at the top of the popup to turn the whole mixer on or off, settings kept
+- Every mixer setting is remembered (enhancer, effects, bell…) except the volume, saved right away; remembered everywhere by default
+- The bell of the lowest band can be tuned: centre (35-150 Hz) and width
+
 ## 1.4.0
 - The yt-dlp companion answers its status check at once (a cold yt-dlp could take seconds and look "not installed"); the settings say why when it isn't found. Run `host/install.cmd` again to update it
 - Tabs opened before an update get the new page agent automatically, and the timeline never steps back

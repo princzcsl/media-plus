@@ -1,4 +1,4 @@
-import { h, setIcon, toast, fmtTime, parseTime, throttle, send, paintRange } from './ui.js';
+import { h, setIcon, toast, fmtTime, parseTime, send, paintRange } from './ui.js';
 import { t } from '../shared/i18n.js';
 import { HOST_INSTALL_URL } from '../shared/settings.js';
 import { listMedia, runOp, captureFrame, bestSource, toggleTab, pickPrimary } from '../shared/tab.js';
@@ -140,23 +140,38 @@ export function initMedia(tab, settings, mixer, host) {
 
     // Transport
     const playBtn = h('button', { class: 'icon-btn round', title: t('playPause'), onclick: () => op('toggle') });
-    const seek = h('input', { type: 'range', class: 'range', min: 0, max: 10000, step: 1, value: 0, 'aria-label': t('position') });
+    const seek = h('input', { type: 'range', class: 'seek-input', min: 0, max: 10000, step: 1, value: 0, 'aria-label': t('position') });
+    const seekFill = h('span', { class: 'seek-fill' });
+    const seekThumb = h('span', { class: 'seek-thumb' });
+    const seekBar = h('div', { class: 'seek' }, h('span', { class: 'seek-track' }, seekFill), seekThumb, seek);
+    let seekWidth = 0;
+    new ResizeObserver(() => { seekWidth = seekBar.clientWidth; }).observe(seekBar);
+    // The native slider only moves by whole pixels (about one per second on a song):
+    // this one moves by fractions of a pixel, every frame.
+    function drawSeek(frac) {
+      const f = Math.max(0, Math.min(1, frac || 0));
+      seekFill.style.transform = `scaleX(${f})`;
+      seekThumb.style.transform = `translateX(${(f * Math.max(0, seekWidth - 14)).toFixed(2)}px)`;
+    }
     const timeEl = h('span', { class: 'time small muted' });
     seek.addEventListener('pointerdown', () => { seeking = true; });
+    // A click without moving fires no "change": release the timeline anyway.
+    seek.addEventListener('pointerup', () => setTimeout(() => { seeking = false; }, 400));
     seek.addEventListener('input', () => {
-      paintRange(seek);
+      drawSeek(seek.value / 10000);
       shownSecond = -1;
       if (cur.duration > 0) timeEl.textContent = `${fmtTime((seek.value / 10000) * cur.duration)} / ${fmtTime(cur.duration)}`;
     });
     seek.addEventListener('change', async () => {
       if (cur.duration > 0) await op('seek', (seek.value / 10000) * cur.duration);
       seeking = false;
+      seek.blur();
     });
 
-    // Volume: 100 % (the middle) is the sound as the site plays it. The left half is the
-    // media's own volume, the right half the mixer boost, up to the maximum boost.
+    // Volume of the tab, on top of the site's own player: 100 % (the middle) is the sound
+    // exactly as the site plays it, the left half lowers it, the right half boosts it.
+    // It never touches the site's volume, and isn't remembered: a new tab starts at 100 %.
     const muteBtn = h('button', { class: 'icon-btn ghost', title: t('mute'), onclick: () => op('mute', !cur.muted) });
-    const sendVolume = throttle((v) => op('volume', v), 80);
     const volume = h('input', { type: 'range', class: 'range', min: 0, max: 1000, step: 1, 'aria-label': t('volume'), title: t('volumeHelp') });
     const volValue = h('span', { class: 'vol-value' });
     const toPercent = (pos) => (pos <= 500 ? pos / 5 : 100 + ((pos - 500) / 500) * (settings.maxBoost - 100));
@@ -169,17 +184,10 @@ export function initMedia(tab, settings, mixer, host) {
         volume.value = '500';
       }
       const pct = Math.round(toPercent(pos));
-      if (pct <= 100) {
-        sendVolume(pct / 100);
-        if (mixer.getBoost() !== 100) mixer.setBoost(100);
-      } else {
-        if (cur.volume < 1 || cur.muted) sendVolume(1);
-        mixer.setBoost(Math.round(pct / 5) * 5);
-      }
+      mixer.setBoost(pct);
       renderVolume(pct);
     });
     volume.addEventListener('dblclick', () => {
-      sendVolume(1);
       mixer.setBoost(100);
       renderVolume(100);
     });
@@ -364,7 +372,7 @@ export function initMedia(tab, settings, mixer, host) {
     }
 
     const body = h('div', { class: 'm-body' },
-      h('div', { class: 'm-row' }, playBtn, seek, timeEl),
+      h('div', { class: 'm-row' }, playBtn, seekBar, timeEl),
       h('div', { class: 'm-row' }, muteBtn, h('div', { class: 'vol-wrap' }, volume), volValue),
       h('div', { class: 'm-row' }, h('span', { class: 'small muted' }, t('speed')), speed, h('span', { class: 'm-spacer' }), loopBtn, abBtn),
       h('div', { class: 'm-actions' }, downloadBtn, shotBtn, sourceBtn, pipBtn),
@@ -381,8 +389,8 @@ export function initMedia(tab, settings, mixer, host) {
     const position = (now = Date.now()) =>
       cur.paused || cur.ended ? anchor : Math.min(cur.duration > 0 ? cur.duration : Infinity, anchor + ((now - anchorAt) / 1000) * (cur.rate || 1));
     function renderTime(time) {
-      seek.value = String(Math.round((time / cur.duration) * 10000));
-      paintRange(seek);
+      if (document.activeElement !== seek || !seeking) seek.value = String(Math.round((time / cur.duration) * 10000));
+      drawSeek(time / cur.duration);
       const second = Math.floor(time);
       if (second !== shownSecond) {
         shownSecond = second;
@@ -430,17 +438,14 @@ export function initMedia(tab, settings, mixer, host) {
         if (hasDuration) renderTime(position());
         else {
           seek.value = '0';
-          paintRange(seek);
+          drawSeek(0);
           timeEl.textContent = cur.duration < 0 ? 'LIVE' : `${fmtTime(cur.time)}`;
           shownSecond = -1;
         }
       }
 
       setIcon(muteBtn, cur.muted || cur.volume === 0 ? 'volumeOff' : 'volume', 18);
-      if (document.activeElement !== volume) {
-        const boost = mixer.getBoost();
-        renderVolume(cur.volume >= 0.995 && boost !== 100 ? boost : Math.round(cur.volume * 100));
-      }
+      if (document.activeElement !== volume) renderVolume(mixer.getBoost());
 
       const rate = String(cur.rate);
       if (![...speed.options].some((o) => o.value === rate)) speed.append(h('option', { value: rate }, `${cur.rate}×`));

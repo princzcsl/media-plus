@@ -78,7 +78,7 @@
     "message": "Volume"
   },
   "volumeHelp": {
-    "message": "100 % (the middle) is the site's normal volume, beyond it boosts the tab. Double-click to reset."
+    "message": "Volume of the tab, on top of the site's player: 100 % (the middle) is the site's sound untouched. Double-click to reset."
   },
   "speed": {
     "message": "Speed"
@@ -204,7 +204,7 @@
     "message": "Volume boost"
   },
   "boostHelp": {
-    "message": "Up to $1 % for the whole tab"
+    "message": "100 % is the site's sound untouched, up to $1 %"
   },
   "presets": {
     "message": "Presets"
@@ -328,6 +328,24 @@
   },
   "effects": {
     "message": "Effects"
+  },
+  "bell": {
+    "message": "Bell of the lowest band"
+  },
+  "bellFreq": {
+    "message": "Centre"
+  },
+  "bellWidth": {
+    "message": "Width"
+  },
+  "octaves": {
+    "message": "$1 oct."
+  },
+  "tabVolume": {
+    "message": "Tab volume"
+  },
+  "mixerToggleHelp": {
+    "message": "Turns the whole mixer on or off, your settings are kept"
   },
   "bassShape": {
     "message": "60 Hz band shape"

@@ -11,7 +11,7 @@ export const DEFAULTS = Object.freeze({
   defaultSpeed: 1,
   preservePitch: true,
   maxBoost: 600,
-  rememberMixer: 'site',
+  rememberMixer: 'global',
   theme: 'auto'
 });
 
