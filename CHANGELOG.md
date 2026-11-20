@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.5.1
+- A download that needs yt-dlp no longer starts a recording on its own: it says why (companion unreachable, or turned off) and offers to record the media while it plays
+- A recording shows a bar with its time, "Stop and save" and "Cancel" (nothing is kept)
+- Settings: the yt-dlp status shows Chrome's exact error and the extension ID, and "Check" is always there
+
 ## 1.5.0
 - Timeline drawn with transforms: it glides by fractions of a pixel instead of moving pixel by pixel
 - The media volume is the tab's volume on top of the site's player: 100 % is always the site's sound untouched, it no longer follows the site's own slider (51 %…), and a new tab starts at 100 %

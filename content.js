@@ -343,6 +343,7 @@
         }
         detach();
         if (section && !el.paused) el.pause();
+        if (entry.discard) return;
         const type = mimeType.split(';')[0];
         const blob = new Blob(chunks, { type });
         if (!blob.size) return;
@@ -359,10 +360,11 @@
     launch(MP4_TYPES[kind].filter((type) => MediaRecorder.isTypeSupported(type)));
   }
 
-  function stopRecording(el) {
+  function stopRecording(el, discard = false) {
     const entry = recorders.get(el);
     if (!entry) return;
     entry.stopping = true;
+    entry.discard = discard;
     if (entry.recorder?.state !== 'inactive') entry.recorder?.stop();
   }
 
@@ -389,7 +391,7 @@
     pitch: (el, p) => { el.preservesPitch = !!p; },
     ab: setAB,
     pip,
-    record: (el, arg) => (arg?.stop ? stopRecording(el) : startRecording(el, arg || {})),
+    record: (el, arg) => (arg?.stop ? stopRecording(el, !!arg.discard) : startRecording(el, arg || {})),
     shot: (el, arg) => shot(el, arg || {}),
     resolve
   };

@@ -452,6 +452,48 @@
   "hostInstall": {
     "message": "Install"
   },
+  "hostFailed": {
+    "message": "Chrome couldn't talk to the companion:"
+  },
+  "hostNotFound": {
+    "message": "yt-dlp companion not reachable"
+  },
+  "recording": {
+    "message": "Recording"
+  },
+  "recordStop": {
+    "message": "Stop and save"
+  },
+  "recordSaved": {
+    "message": "Recording saved"
+  },
+  "recordCanceled": {
+    "message": "Recording canceled, nothing was saved"
+  },
+  "recordIt": {
+    "message": "Record it"
+  },
+  "recordOffer": {
+    "message": "It can be recorded while it plays (MP4, real time). You can stop or cancel at any moment."
+  },
+  "recordOfferAudio": {
+    "message": "The sound can be recorded while it plays (M4A, real time). You can stop or cancel at any moment."
+  },
+  "noHostError": {
+    "message": "Can't download it: the yt-dlp companion isn't reachable."
+  },
+  "engineBrowserError": {
+    "message": "This media needs yt-dlp, which is turned off in the settings."
+  },
+  "noTargetError": {
+    "message": "yt-dlp can't be used on this page."
+  },
+  "viaNeedsYtdlp": {
+    "message": "Needs the yt-dlp companion."
+  },
+  "viaNeedsYtdlpOff": {
+    "message": "Needs yt-dlp (turned off in the settings)."
+  },
   "hostWrongId": {
     "message": "Installed for another copy of the extension: run host\\install.cmd again"
   },

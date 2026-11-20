@@ -452,6 +452,48 @@
   "hostInstall": {
     "message": "Installer"
   },
+  "hostFailed": {
+    "message": "Chrome n'arrive pas à joindre le module :"
+  },
+  "hostNotFound": {
+    "message": "Module yt-dlp injoignable"
+  },
+  "recording": {
+    "message": "Enregistrement"
+  },
+  "recordStop": {
+    "message": "Arrêter et enregistrer"
+  },
+  "recordSaved": {
+    "message": "Enregistrement sauvegardé"
+  },
+  "recordCanceled": {
+    "message": "Enregistrement annulé, rien n'a été gardé"
+  },
+  "recordIt": {
+    "message": "L'enregistrer"
+  },
+  "recordOffer": {
+    "message": "Il peut être enregistré pendant sa lecture (MP4, en temps réel). Tu peux arrêter ou annuler à tout moment."
+  },
+  "recordOfferAudio": {
+    "message": "Le son peut être enregistré pendant la lecture (M4A, en temps réel). Tu peux arrêter ou annuler à tout moment."
+  },
+  "noHostError": {
+    "message": "Téléchargement impossible : le module yt-dlp est injoignable."
+  },
+  "engineBrowserError": {
+    "message": "Ce média a besoin de yt-dlp, désactivé dans les réglages."
+  },
+  "noTargetError": {
+    "message": "yt-dlp ne peut pas être utilisé sur cette page."
+  },
+  "viaNeedsYtdlp": {
+    "message": "Nécessite le module yt-dlp."
+  },
+  "viaNeedsYtdlpOff": {
+    "message": "Nécessite yt-dlp (désactivé dans les réglages)."
+  },
   "hostWrongId": {
     "message": "Installé pour une autre copie de l'extension : relance host\\install.cmd"
   },

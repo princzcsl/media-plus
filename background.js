@@ -230,9 +230,10 @@ const jobOps = {
 
 // ---------- One download entry point ----------
 
-// Simple files go through Chrome; streamed media, MP3 and extracts through yt-dlp;
-// without the companion (or for sites yt-dlp can't read), the media is recorded while it plays.
-async function downloadMedia({ tabId, frameId, id, format = 'mp4', start = null, end = null, forceRecord = false }) {
+// Simple files go through Chrome; streamed media, MP3 and extracts through yt-dlp.
+// When neither can do it, the caller is told so (`canRecord`) and offers to record the
+// media while it plays; `allowRecord` (shortcuts) records straight away.
+async function downloadMedia({ tabId, frameId, id, format = 'mp4', start = null, end = null, forceRecord = false, allowRecord = false }) {
   const settings = await getSettings();
   const resolved = await runOp(tabId, frameId, id, 'resolve');
   const section = start != null && end > start;
@@ -250,14 +251,17 @@ async function downloadMedia({ tabId, frameId, id, format = 'mp4', start = null,
     return { ...(await startDownload({ ...resolved, tabId, frameId, pageUrl })), via: 'browser' };
   }
 
+  let reason = 'engineBrowser';
   if (settings.engine !== 'browser') {
-    const host = await hostInfo();
+    const host = await hostInfo(true);
     const target = directUrl || (/^https?:/i.test(pageUrl) ? pageUrl : null);
     if (host.installed && target) {
       return startJob({ url: target, pageUrl, title: resolved.title, format, start, end, tabId, frameId, mediaId: id });
     }
+    reason = host.installed ? 'noTarget' : 'noHost';
   }
-  return record();
+  if (allowRecord) return record();
+  return { canRecord: true, reason };
 }
 
 async function downloadShot({ dataUrl, format, title, time, tabId }) {
@@ -403,7 +407,7 @@ async function runAction(action, tab, media) {
       return flash(tab.id, 'OK');
     }
     if (action === 'download') {
-      const res = await downloadMedia({ tabId: tab.id, frameId: media.frameId, id: media.id });
+      const res = await downloadMedia({ tabId: tab.id, frameId: media.frameId, id: media.id, allowRecord: true });
       return flash(tab.id, res.error ? 'ERR' : res.via === 'record' ? 'REC' : 'OK');
     }
     if (action === 'source') {

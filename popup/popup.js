@@ -48,10 +48,11 @@ const forcedTab = Number(new URLSearchParams(location.search).get('tab'));
 const [tab] = forcedTab ? [await chrome.tabs.get(forcedTab)] : await chrome.tabs.query({ active: true, currentWindow: true });
 
 // Companion status, filled in when the service worker answers.
-const host = { installed: false, checked: false };
+const host = { installed: false, checked: false, ready: null };
 const hostReady = chrome.runtime.sendMessage({ type: 'host:info' })
   .then((info) => Object.assign(host, info, { checked: true }))
   .catch(() => Object.assign(host, { checked: true }));
+host.ready = hostReady;
 
 mixer = await initMixer(tab, settings);
 initMedia(tab, settings, mixer, host);

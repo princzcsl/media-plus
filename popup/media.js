@@ -112,6 +112,7 @@ export function initMedia(tab, settings, mixer, host) {
   }
 
   mixer.onChange(() => { for (const card of cards.values()) card.update({}); });
+  const refreshSoon = () => setTimeout(refresh, 400);
 
   function createCard(initial) {
     let cur = initial;
@@ -278,7 +279,7 @@ export function initMedia(tab, settings, mixer, host) {
 
     // Download options: format, whole or extract, and how it will be fetched.
     async function openDownload() {
-      const resolved = await runOp(tab.id, cur.frameId, cur.id, 'resolve');
+      const [resolved] = await Promise.all([runOp(tab.id, cur.frameId, cur.id, 'resolve'), host.ready]);
       const opts = {
         format: cur.kind === 'audio' ? 'mp3' : 'mp4',
         part: cur.ab ? 'extract' : 'whole',
@@ -311,10 +312,8 @@ export function initMedia(tab, settings, mixer, host) {
         if (willBrowser()) via.replaceChildren(t('viaBrowser'));
         else if (willHost()) via.replaceChildren(t('viaYtdlp'));
         else {
-          via.replaceChildren(t(opts.format === 'mp3' ? 'viaRecordAudio' : 'viaRecord'));
-          if (!host.installed && settings.engine !== 'browser') {
-            via.append(' ', h('a', { href: HOST_INSTALL_URL, target: '_blank' }, t('installYtdlp')));
-          }
+          via.replaceChildren(t(settings.engine === 'browser' ? 'viaNeedsYtdlpOff' : 'viaNeedsYtdlp'));
+          if (settings.engine !== 'browser') via.append(' ', h('a', { href: HOST_INSTALL_URL, target: '_blank' }, t('installYtdlp')));
         }
       }
 
@@ -338,8 +337,9 @@ export function initMedia(tab, settings, mixer, host) {
               format: opts.format, start: section ? opts.start : null, end: section ? opts.end : null
             }).catch((err) => ({ error: err.message }));
             if (res.error) return toast(errorText(new Error(res.error)), 'error');
+            if (res.canRecord) return offerRecording(res.reason, opts);
             closeSheet();
-            toast(t(res.via === 'record' ? 'recordStarted' : res.via === 'ytdlp' ? 'ytdlpStarted' : 'downloadStarted'));
+            toast(t(res.via === 'ytdlp' ? 'ytdlpStarted' : 'downloadStarted'));
           }
         }, t('download'))
       );
@@ -348,6 +348,31 @@ export function initMedia(tab, settings, mixer, host) {
       sheet.hidden = false;
       downloadBtn.classList.add('open');
       card.el.classList.add('open');
+    }
+
+    // yt-dlp can't do it: say why and offer to record while it plays (stoppable at any time).
+    function offerRecording(reason, opts) {
+      const section = opts.part === 'extract';
+      sheet.replaceChildren(
+        h('p', { class: 'small sheet-error' }, t(reason === 'noHost' ? 'noHostError' : reason === 'engineBrowser' ? 'engineBrowserError' : 'noTargetError')),
+        h('p', { class: 'small muted' }, t(opts.format === 'mp3' ? 'recordOfferAudio' : 'recordOffer')),
+        h('div', { class: 'row' },
+          h('button', {
+            class: 'button primary', icon: 'record', iconSize: 14,
+            onclick: async () => {
+              const res = await send({
+                type: 'media:download', tabId: tab.id, frameId: cur.frameId, id: cur.id, format: opts.format,
+                start: section ? opts.start : null, end: section ? opts.end : null, forceRecord: true
+              }).catch((err) => ({ error: err.message }));
+              if (res.error) return toast(errorText(new Error(res.error)), 'error');
+              closeSheet();
+              toast(t('recordStarted'));
+              refreshSoon();
+            }
+          }, t('recordIt')),
+          h('button', { class: 'button', onclick: closeSheet }, t('cancel')),
+          reason === 'noHost' && h('a', { class: 'link-btn', href: HOST_INSTALL_URL, target: '_blank' }, t('installYtdlp')))
+      );
     }
 
     function showStreams(resolved) {
@@ -371,7 +396,21 @@ export function initMedia(tab, settings, mixer, host) {
       card.el.classList.add('open');
     }
 
+    const recTime = h('span', { class: 'rec-time' });
+    const recBar = h('div', { class: 'rec-bar', hidden: true },
+      h('span', { class: 'rec-dot' }, '●'), h('span', { class: 'rec-label' }, t('recording')), recTime,
+      h('span', { class: 'rec-break' }),
+      h('button', {
+        class: 'button primary', icon: 'stop', iconSize: 12,
+        onclick: async () => { if (await op('record', { stop: true })) toast(t('recordSaved')); }
+      }, t('recordStop')),
+      h('button', {
+        class: 'button',
+        onclick: async () => { if (await op('record', { stop: true, discard: true })) toast(t('recordCanceled')); }
+      }, t('cancel')));
+
     const body = h('div', { class: 'm-body' },
+      recBar,
       h('div', { class: 'm-row' }, playBtn, seekBar, timeEl),
       h('div', { class: 'm-row' }, muteBtn, h('div', { class: 'vol-wrap' }, volume), volValue),
       h('div', { class: 'm-row' }, h('span', { class: 'small muted' }, t('speed')), speed, h('span', { class: 'm-spacer' }), loopBtn, abBtn),
@@ -421,7 +460,12 @@ export function initMedia(tab, settings, mixer, host) {
       if (cur.width) parts.push(`${cur.width}×${cur.height}`);
       if (cur.host) parts.push(cur.host);
       meta.replaceChildren();
-      if (cur.recording) meta.append(h('span', { class: 'rec-dot' }, `● REC ${fmtTime((Date.now() - cur.recording.since) / 1000)} · `));
+      if (cur.recording) meta.append(h('span', { class: 'rec-dot' }, '● REC · '));
+      recBar.hidden = !cur.recording;
+      if (cur.recording) {
+        recTime.textContent = fmtTime((Date.now() - cur.recording.since) / 1000);
+        card.el.classList.add('open');
+      }
       meta.append(parts.join(' · '));
 
       if (cur.thumb && cur.thumb !== card.thumb) {

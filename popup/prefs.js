@@ -40,36 +40,38 @@ export async function initPrefs(settings, host, hostReady, onChange) {
   // yt-dlp companion
   const status = document.getElementById('host-status');
   const hostAction = document.getElementById('host-action');
+  const installLink = h('a', { class: 'link-btn host-install', href: HOST_INSTALL_URL, target: '_blank' }, t('hostInstall'));
+  hostAction.after(installLink);
   function renderHost() {
     if (!host.checked) {
       status.textContent = t('hostChecking');
-      hostAction.hidden = true;
+      hostAction.disabled = true;
+      installLink.hidden = true;
       return;
     }
-    hostAction.hidden = false;
+    hostAction.disabled = false;
+    hostAction.textContent = t('hostCheck');
+    installLink.hidden = !!host.installed;
     if (host.installed) {
       status.textContent = `yt-dlp ${host.ytdlp || '?'} · ffmpeg ${host.ffmpeg ? '✓' : '✗'}`;
-      hostAction.textContent = t('hostCheck');
-    } else {
-      const err = String(host.error || '');
-      status.textContent = t(/forbidden/i.test(err) ? 'hostWrongId'
-        : err === 'ytdlp-missing' ? 'hostNoYtdlp'
-          : err === 'timeout' ? 'hostTimeout'
-            : 'hostMissing');
-      hostAction.textContent = t('hostInstall');
-    }
-  }
-  hostAction.addEventListener('click', async () => {
-    if (!host.installed) {
-      chrome.tabs.create({ url: HOST_INSTALL_URL });
       return;
     }
+    const err = String(host.error || '');
+    const key = /not found/i.test(err) ? 'hostMissing'
+      : /forbidden/i.test(err) ? 'hostWrongId'
+        : err === 'ytdlp-missing' ? 'hostNoYtdlp'
+          : err === 'timeout' ? 'hostTimeout'
+            : 'hostFailed';
+    // Chrome's own message, so a problem can be reported precisely.
+    status.replaceChildren(t(key), h('span', { class: 'host-error' }, `${err || '?'} · ID ${chrome.runtime.id}`));
+  }
+  hostAction.addEventListener('click', async () => {
     host.checked = false;
     renderHost();
     const info = await chrome.runtime.sendMessage({ type: 'host:info', force: true }).catch((err) => ({ installed: false, error: err.message }));
     Object.assign(host, info, { checked: true });
     renderHost();
-    toast(t(host.installed ? 'hostOk' : 'hostMissing'), host.installed ? 'info' : 'error');
+    toast(t(host.installed ? 'hostOk' : 'hostNotFound'), host.installed ? 'info' : 'error');
   });
   renderHost();
   hostReady.then(renderHost);
