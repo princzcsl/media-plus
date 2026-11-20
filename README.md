@@ -30,7 +30,7 @@ A Chrome extension to control the media playing in your browser, from one popup:
 **Settings**
 - Download location: ask every time (the dialog opens in the last folder you used) or straight to Downloads, with an optional subfolder
 - File names: media title or site + date; extracts get their time range
-- yt-dlp: video quality (best or H.264 for compatibility), maximum resolution, use the site's login
+- yt-dlp: video codec (best available, H.264 for editing software, VP9, AV1) and maximum resolution, also per download in the advanced options; use the site's login
 - Capture format, default speed, keep the pitch, maximum boost, theme
 
 **Shortcuts & context menu**

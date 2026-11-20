@@ -1,5 +1,6 @@
 import { getSettings } from './shared/settings.js';
 import { buildFilename, extFromMime, extFromUrl, timecode } from './shared/files.js';
+import { videoSpec } from './shared/ytdlp.js';
 import { listMedia, runOp, findBySrc, pickPrimary, captureFrame, saveInFrame, bestSource } from './shared/tab.js';
 
 const ACCENT = '#8b6cff';
@@ -182,7 +183,7 @@ function netscapeCookies(cookies) {
   return `${lines.join('\n')}\n`;
 }
 
-async function startJob({ url, pageUrl, title, format, start, end, tabId, frameId, mediaId }) {
+async function startJob({ url, pageUrl, title, format, start, end, tabId, frameId, mediaId, codec, height }) {
   const settings = await getSettings();
   const id = `j${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
   const section = start != null && end > start;
@@ -204,8 +205,7 @@ async function startJob({ url, pageUrl, title, format, start, end, tabId, frameI
   }
   hostPort().postMessage({
     cmd: 'download', id, url, format,
-    quality: settings.quality,
-    maxHeight: settings.maxHeight,
+    ...videoSpec({ codec: codec ?? settings.codec, height: height ?? settings.maxHeight }),
     start: job.start, end: job.end,
     cookies
   });
@@ -233,8 +233,10 @@ const jobOps = {
 // Simple files go through Chrome; streamed media, MP3 and extracts through yt-dlp.
 // When neither can do it, the caller is told so (`canRecord`) and offers to record the
 // media while it plays; `allowRecord` (shortcuts) records straight away.
-async function downloadMedia({ tabId, frameId, id, format = 'mp4', start = null, end = null, forceRecord = false, allowRecord = false }) {
+async function downloadMedia({ tabId, frameId, id, format = 'mp4', start = null, end = null, forceRecord = false, allowRecord = false, codec = null, height = null }) {
   const settings = await getSettings();
+  codec ??= settings.codec;
+  height ??= settings.maxHeight;
   const resolved = await runOp(tabId, frameId, id, 'resolve');
   const section = start != null && end > start;
   const pageUrl = resolved.page && /^https?:/.test(resolved.page) ? resolved.page : await pageUrlOf(tabId);
@@ -247,7 +249,8 @@ async function downloadMedia({ tabId, frameId, id, format = 'mp4', start = null,
 
   if (forceRecord) return record();
 
-  if (resolved.type === 'url' && format === 'mp4' && !section) {
+  // A plain file is saved by Chrome as it is, unless a codec or resolution was asked for.
+  if (resolved.type === 'url' && format === 'mp4' && !section && codec === 'auto' && !height) {
     return { ...(await startDownload({ ...resolved, tabId, frameId, pageUrl })), via: 'browser' };
   }
 
@@ -256,7 +259,7 @@ async function downloadMedia({ tabId, frameId, id, format = 'mp4', start = null,
     const host = await hostInfo(true);
     const target = directUrl || (/^https?:/i.test(pageUrl) ? pageUrl : null);
     if (host.installed && target) {
-      return startJob({ url: target, pageUrl, title: resolved.title, format, start, end, tabId, frameId, mediaId: id });
+      return startJob({ url: target, pageUrl, title: resolved.title, format, start, end, tabId, frameId, mediaId: id, codec, height });
     }
     reason = host.installed ? 'noTarget' : 'noHost';
   }

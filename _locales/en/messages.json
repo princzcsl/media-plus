@@ -521,17 +521,44 @@
   "engineBrowser": {
     "message": "The browser only"
   },
-  "quality": {
-    "message": "Video quality"
+  "codec": {
+    "message": "Video codec"
   },
-  "qualityHelp": {
-    "message": "Compatible = H.264, plays everywhere"
+  "codecHelp": {
+    "message": "H.264 opens everywhere, editing software included"
   },
-  "qualityBest": {
-    "message": "Best"
+  "codecAuto": {
+    "message": "Best available"
   },
-  "qualityCompat": {
-    "message": "Compatible"
+  "codecH264": {
+    "message": "H.264 (editing)"
+  },
+  "codec_auto": {
+    "message": "Best available"
+  },
+  "codec_h264": {
+    "message": "H.264 (editing)"
+  },
+  "codec_vp9": {
+    "message": "VP9"
+  },
+  "codec_av1": {
+    "message": "AV1"
+  },
+  "codecNote_auto": {
+    "message": "Highest resolution first: on YouTube above 1080p it is AV1 or VP9, which some players and editors don't read."
+  },
+  "codecNote_h264": {
+    "message": "H.264 + AAC: opens in Premiere Pro, DaVinci Resolve, Final Cut, everywhere. YouTube offers it up to 1080p."
+  },
+  "codecNote_vp9": {
+    "message": "VP9: up to 4K on YouTube, light files, not read by every editor."
+  },
+  "codecNote_av1": {
+    "message": "AV1: the most efficient, needs a recent device to play smoothly."
+  },
+  "advanced": {
+    "message": "Advanced options"
   },
   "maxHeight": {
     "message": "Maximum resolution"

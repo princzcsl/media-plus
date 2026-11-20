@@ -1,6 +1,7 @@
 import { h, setIcon, toast, fmtTime, parseTime, send, paintRange } from './ui.js';
 import { t } from '../shared/i18n.js';
 import { HOST_INSTALL_URL } from '../shared/settings.js';
+import { CODECS, HEIGHTS } from '../shared/ytdlp.js';
 import { listMedia, runOp, captureFrame, bestSource, toggleTab, pickPrimary } from '../shared/tab.js';
 
 const SPEEDS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3];
@@ -284,8 +285,24 @@ export function initMedia(tab, settings, mixer, host) {
         format: cur.kind === 'audio' ? 'mp3' : 'mp4',
         part: cur.ab ? 'extract' : 'whole',
         start: cur.ab ? cur.ab.a : Math.max(0, cur.time - 0),
-        end: cur.ab ? cur.ab.b : Math.min(cur.duration > 0 ? cur.duration : cur.time + 30, cur.time + 30)
+        end: cur.ab ? cur.ab.b : Math.min(cur.duration > 0 ? cur.duration : cur.time + 30, cur.time + 30),
+        codec: settings.codec,
+        height: settings.maxHeight
       };
+
+      // Advanced: resolution and codec of this download (defaults from the settings).
+      const resSelect = h('select', { class: 'select compact', onchange: () => { opts.height = Number(resSelect.value); renderVia(); } },
+        HEIGHTS.map((v) => h('option', { value: String(v) }, v ? `${v}p` : t('maxHeightBest'))));
+      resSelect.value = String(opts.height);
+      const codecNote = h('p', { class: 'small muted adv-note' });
+      const codecSelect = h('select', { class: 'select compact', onchange: () => { opts.codec = codecSelect.value; renderVia(); } },
+        CODECS.map((c) => h('option', { value: c }, t(`codec_${c}`))));
+      codecSelect.value = opts.codec;
+      const adv = h('details', { class: 'adv', open: opts.codec !== 'auto' || !!opts.height },
+        h('summary', {}, t('advanced')),
+        h('div', { class: 'adv-row' }, h('span', { class: 'small muted' }, t('maxHeight')), resSelect),
+        h('div', { class: 'adv-row' }, h('span', { class: 'small muted' }, t('codec')), codecSelect),
+        codecNote);
 
       const via = h('div', { class: 'via small muted' });
       const startInput = h('input', { class: 'input time', value: fmtTime(opts.start), 'aria-label': t('from') });
@@ -306,9 +323,11 @@ export function initMedia(tab, settings, mixer, host) {
         h('span', { class: 'small muted' }, t('from')), startInput, here(startInput, 'start'),
         h('span', { class: 'small muted' }, t('to')), endInput, here(endInput, 'end'));
 
-      const willBrowser = () => resolved.type === 'url' && opts.format === 'mp4' && opts.part === 'whole';
+      const willBrowser = () => resolved.type === 'url' && opts.format === 'mp4' && opts.part === 'whole' && opts.codec === 'auto' && !opts.height;
       const willHost = () => !willBrowser() && settings.engine !== 'browser' && host.installed;
       function renderVia() {
+        adv.hidden = opts.format !== 'mp4';
+        codecNote.textContent = t(`codecNote_${opts.codec}`);
         if (willBrowser()) via.replaceChildren(t('viaBrowser'));
         else if (willHost()) via.replaceChildren(t('viaYtdlp'));
         else {
@@ -325,6 +344,7 @@ export function initMedia(tab, settings, mixer, host) {
           renderVia();
         }),
         extractRow,
+        adv,
         via,
         h('button', {
           class: 'button primary wide', icon: 'download', iconSize: 15,
@@ -334,7 +354,8 @@ export function initMedia(tab, settings, mixer, host) {
             if (section && !(opts.end > opts.start)) return toast(t('abTooShort'), 'error');
             const res = await send({
               type: 'media:download', tabId: tab.id, frameId: cur.frameId, id: cur.id,
-              format: opts.format, start: section ? opts.start : null, end: section ? opts.end : null
+              format: opts.format, start: section ? opts.start : null, end: section ? opts.end : null,
+              codec: opts.codec, height: opts.height
             }).catch((err) => ({ error: err.message }));
             if (res.error) return toast(errorText(new Error(res.error)), 'error');
             if (res.canRecord) return offerRecording(res.reason, opts);

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.6.0
+- Download "Advanced options": maximum resolution and video codec for this download (best available, H.264 for editing software, VP9, AV1); the defaults are in the settings, where the codec replaces the old quality choice
+- The extension now builds the yt-dlp format choice and the companion only relays it: future format changes won't need a reinstall. Run `host/install.cmd` once more for this version
+- The mixer switch is per tab: turning it off on one tab leaves the others running
+
 ## 1.5.1
 - A download that needs yt-dlp no longer starts a recording on its own: it says why (companion unreachable, or turned off) and offers to record the media while it plays
 - A recording shows a bar with its time, "Stop and save" and "Cancel" (nothing is kept)

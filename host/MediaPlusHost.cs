@@ -29,7 +29,7 @@ class Job
 
 static class Host
 {
-    const string Version = "1.0.0";
+    const string Version = "1.1.0";
     static readonly object OutLock = new object();
     static readonly object JobsLock = new object();
     static readonly Dictionary<string, Job> Jobs = new Dictionary<string, Job>();
@@ -200,12 +200,11 @@ static class Host
         }
         else
         {
-            string sort = "res";
-            int maxHeight = (int)Num(msg, "maxHeight", 0);
-            if (maxHeight > 0) sort = "res:" + maxHeight;
-            if (Str(msg, "quality") == "compat") sort += ",vcodec:h264,acodec:aac";
-            sort += ",ext:mp4:m4a";
-            args.AddRange(new string[] { "-f", "bv*+ba/b", "-S", sort, "--merge-output-format", "mp4", "--remux-video", "mp4" });
+            // The extension picks the format (-f) and sort order (-S): they are only ever passed
+            // as the values of those two options, so they can't add options of their own.
+            string spec = SafeSpec(Str(msg, "formatSpec")) ?? "bv*+ba/b";
+            string sort = SafeSpec(Str(msg, "sortSpec")) ?? "res,ext:mp4:m4a";
+            args.AddRange(new string[] { "-f", spec, "-S", sort, "--merge-output-format", "mp4", "--remux-video", "mp4" });
         }
 
         double start = Num(msg, "start", -1);
@@ -299,6 +298,13 @@ static class Host
         {
             if (!job.Cancelled) Send(Obj("type", "error", "id", job.Id, "error", e.Message));
         }
+    }
+
+    static string SafeSpec(string value)
+    {
+        if (string.IsNullOrEmpty(value) || value.Length > 400 || value.StartsWith("-")) return null;
+        foreach (char c in value) if (char.IsControl(c) || c == '"') return null;
+        return value;
     }
 
     static string LastError(string stderr)

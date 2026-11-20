@@ -3,7 +3,7 @@ export const DEFAULTS = Object.freeze({
   subfolder: '',
   naming: 'title',
   engine: 'auto',
-  quality: 'best',
+  codec: 'auto',
   maxHeight: 0,
   sendCookies: false,
   shotFormat: 'png',
@@ -16,7 +16,10 @@ export const DEFAULTS = Object.freeze({
 });
 
 export async function getSettings() {
-  const stored = await chrome.storage.sync.get(Object.keys(DEFAULTS));
+  const stored = await chrome.storage.sync.get([...Object.keys(DEFAULTS), 'quality']);
+  // 1.x "Compatible" quality is the H.264 codec now.
+  if (!stored.codec && stored.quality === 'compat') stored.codec = 'h264';
+  delete stored.quality;
   return { ...DEFAULTS, ...stored };
 }
 

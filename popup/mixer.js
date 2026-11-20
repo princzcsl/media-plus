@@ -53,7 +53,10 @@ export async function initMixer(tab, settings) {
 
   const live = $('audio-live');
   const enabledEl = $('mixer-enabled');
-  let enabled = (await chrome.storage.local.get('mixerEnabled')).mixerEnabled !== false;
+  // On / off is per tab: turning the mixer off here leaves the other tabs as they are.
+  const offKey = `mixerOff:${tab.id}`;
+  let enabled = !(await chrome.storage.session.get(offKey))[offKey];
+  const saveEnabled = () => (enabled ? chrome.storage.session.remove(offKey) : chrome.storage.session.set({ [offKey]: true }));
   const boost = $('boost');
   const boostValue = $('boost-value');
   const canvas = $('eq-curve');
@@ -142,7 +145,7 @@ export async function initMixer(tab, settings) {
 
   enabledEl.addEventListener('change', () => {
     enabled = enabledEl.checked;
-    chrome.storage.local.set({ mixerEnabled: enabled });
+    saveEnabled();
     renderStatus();
     push();
   });
@@ -151,7 +154,7 @@ export async function initMixer(tab, settings) {
     // Touching a setting while the mixer is off turns it back on.
     if (!enabled && save) {
       enabled = true;
-      chrome.storage.local.set({ mixerEnabled: true });
+      saveEnabled();
     }
     render();
     push();
