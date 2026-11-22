@@ -42,6 +42,23 @@ export async function initPrefs(settings, host, hostReady, onChange) {
   const hostAction = document.getElementById('host-action');
   const installLink = h('a', { class: 'link-btn host-install', href: HOST_INSTALL_URL, target: '_blank' }, t('hostInstall'));
   hostAction.after(installLink);
+  const updateBtn = h('button', { class: 'button', hidden: true }, t('ytdlpUpdate'));
+  installLink.after(updateBtn);
+  // yt-dlp versions are dates: older ones often fail on sites that changed since.
+  const ageInDays = (v) => {
+    const m = /^(\d{4})\.(\d{2})\.(\d{2})/.exec(v || '');
+    return m ? Math.floor((Date.now() - new Date(+m[1], +m[2] - 1, +m[3])) / 86_400_000) : null;
+  };
+  updateBtn.addEventListener('click', async () => {
+    updateBtn.disabled = true;
+    updateBtn.textContent = t('ytdlpUpdating');
+    const res = await chrome.runtime.sendMessage({ type: 'host:update' }).catch((err) => ({ ok: false, log: err.message }));
+    updateBtn.disabled = false;
+    updateBtn.textContent = t('ytdlpUpdate');
+    if (res.ytdlp) host.ytdlp = res.ytdlp;
+    renderHost();
+    toast(res.ok ? t('ytdlpUpdated', res.ytdlp || '?') : `${t('ytdlpUpdateFailed')} ${res.log || ''}`, res.ok ? 'info' : 'error');
+  });
   function renderHost() {
     if (!host.checked) {
       status.textContent = t('hostChecking');
@@ -52,8 +69,11 @@ export async function initPrefs(settings, host, hostReady, onChange) {
     hostAction.disabled = false;
     hostAction.textContent = t('hostCheck');
     installLink.hidden = !!host.installed;
+    updateBtn.hidden = !host.installed;
     if (host.installed) {
       status.textContent = `yt-dlp ${host.ytdlp || '?'} · ffmpeg ${host.ffmpeg ? '✓' : '✗'}`;
+      const age = ageInDays(host.ytdlp);
+      if (age != null && age > 45) status.append(h('span', { class: 'host-old' }, t('ytdlpOld', String(age))));
       return;
     }
     const err = String(host.error || '');

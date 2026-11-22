@@ -55,7 +55,7 @@ Chrome extensions can't run programs, so yt-dlp needs a small companion that Chr
 
 The script installs yt-dlp and ffmpeg with winget if they're missing, builds the companion with the C# compiler that comes with Windows (no download), and registers it for Chrome, Edge, Brave and Chromium for your user only (no admin rights). Everything lives in `%LOCALAPPDATA%\MediaPlus`; `host\uninstall.ps1` removes it.
 
-How a download goes: yt-dlp saves the file in a temporary folder, the companion hands it to Chrome over `127.0.0.1` (random port and token, this file only), Chrome saves it like any download, then the temporary file is deleted. Keep yt-dlp up to date (`winget upgrade yt-dlp.yt-dlp`): sites change often.
+How a download goes: yt-dlp saves the file in a temporary folder, the companion hands it to Chrome over `127.0.0.1` (random port and token, this file only), Chrome saves it like any download, then the temporary file is deleted. Keep yt-dlp up to date with **Settings → yt-dlp → Update**: sites change often, and an outdated yt-dlp is the usual reason a download fails. If yt-dlp still can't read a page, Media+ tries again with the stream the player loaded.
 
 ## How it works
 

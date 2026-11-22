@@ -93,8 +93,10 @@ function hostPort() {
   return port;
 }
 
+let updating = null;
+
 function releaseIfIdle() {
-  const busy = [...jobs.values()].some((j) => j.status === 'running' || j.status === 'saving');
+  const busy = updating || [...jobs.values()].some((j) => j.status === 'running' || j.status === 'saving');
   if (port && !busy) {
     port.disconnect();
     port = null;
@@ -150,6 +152,10 @@ async function onHostMessage(msg) {
     pings = [];
     return;
   }
+  if (msg.type === 'updated') {
+    updating?.resolve(msg);
+    return;
+  }
   const job = jobs.get(msg.id);
   if (!job) return;
   if (msg.type === 'progress') {
@@ -158,7 +164,15 @@ async function onHostMessage(msg) {
       ? { stage: msg.stage }
       : { pct: Number.isFinite(pct) ? pct : job.pct, speed: msg.speed || '', eta: msg.eta || '' });
   } else if (msg.type === 'error') {
-    await finishJob(job.id, { status: 'error', error: msg.error });
+    // The site's own extractor failed (site changed, blocked request…): try once more with
+    // the stream the player itself loaded, which yt-dlp can read without knowing the site.
+    if (job.fallback && !job.retried) {
+      port?.postMessage({ cmd: 'cleanup', id: job.id });
+      await updateJob(job.id, { retried: true, pct: 0, speed: '', eta: '', stage: null, firstError: msg.error });
+      sendDownload(job, job.fallback);
+      return;
+    }
+    await finishJob(job.id, { status: 'error', error: job.firstError ? `${job.firstError} · ${msg.error}` : msg.error });
   } else if (msg.type === 'done') {
     await updateJob(job.id, { status: 'saving', pct: 100 });
     const ext = (msg.name.match(/\.([a-z0-9]+)$/i)?.[1] || (job.format === 'mp3' ? 'mp3' : 'mp4')).toLowerCase();
@@ -183,7 +197,24 @@ function netscapeCookies(cookies) {
   return `${lines.join('\n')}\n`;
 }
 
-async function startJob({ url, pageUrl, title, format, start, end, tabId, frameId, mediaId, codec, height }) {
+async function sendDownload(job, url) {
+  const settings = await getSettings();
+  let cookies = null;
+  if (settings.sendCookies) {
+    try {
+      cookies = netscapeCookies(await chrome.cookies.getAll({ url: job.pageUrl }));
+    } catch { /* no cookies */ }
+  }
+  hostPort().postMessage({
+    cmd: 'download', id: job.id, url, format: job.format,
+    ...videoSpec({ codec: job.codec, height: job.height }),
+    start: job.start, end: job.end,
+    referer: job.pageUrl,
+    cookies
+  });
+}
+
+async function startJob({ url, pageUrl, title, format, start, end, tabId, frameId, mediaId, codec, height, fallback }) {
   const settings = await getSettings();
   const id = `j${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
   const section = start != null && end > start;
@@ -192,24 +223,34 @@ async function startJob({ url, pageUrl, title, format, start, end, tabId, frameI
     start: section ? start : null,
     end: section ? end : null,
     suffix: section ? `${timecode(start)}-${timecode(end)}` : '',
+    codec: codec ?? settings.codec,
+    height: height ?? settings.maxHeight,
+    fallback: fallback && fallback !== url ? fallback : null,
     status: 'running', pct: 0, speed: '', eta: '', at: Date.now()
   };
   jobs.set(id, job);
   await saveJobs();
-
-  let cookies = null;
-  if (settings.sendCookies) {
-    try {
-      cookies = netscapeCookies(await chrome.cookies.getAll({ url: pageUrl }));
-    } catch { /* no cookies */ }
-  }
-  hostPort().postMessage({
-    cmd: 'download', id, url, format,
-    ...videoSpec({ codec: codec ?? settings.codec, height: height ?? settings.maxHeight }),
-    start: job.start, end: job.end,
-    cookies
-  });
+  await sendDownload(job, url);
   return { ok: true, via: 'ytdlp', jobId: id };
+}
+
+// Updates yt-dlp through the companion (winget for a winget install, yt-dlp -U otherwise).
+async function updateYtdlp() {
+  if (updating) return updating.promise;
+  let resolve;
+  const promise = new Promise((r) => { resolve = r; });
+  updating = { promise, resolve };
+  try {
+    hostPort().postMessage({ cmd: 'update', id: 'update' });
+    const res = await Promise.race([promise, new Promise((r) => setTimeout(() => r({ ok: false, log: 'timeout' }), 360_000))]);
+    await chrome.storage.session.remove('host');
+    return { ok: !!res.ok, ytdlp: res.ytdlp, log: res.log };
+  } catch (err) {
+    return { ok: false, log: err.message };
+  } finally {
+    updating = null;
+    releaseIfIdle();
+  }
 }
 
 const jobOps = {
@@ -259,7 +300,9 @@ async function downloadMedia({ tabId, frameId, id, format = 'mp4', start = null,
     const host = await hostInfo(true);
     const target = directUrl || (/^https?:/i.test(pageUrl) ? pageUrl : null);
     if (host.installed && target) {
-      return startJob({ url: target, pageUrl, title: resolved.title, format, start, end, tabId, frameId, mediaId: id, codec, height });
+      // When yt-dlp starts from the page, the stream the player loaded is kept as plan B.
+      const fallback = target === directUrl ? null : bestSource({ ...resolved, type: resolved.type === 'url' ? 'none' : resolved.type });
+      return startJob({ url: target, pageUrl, title: resolved.title, format, start, end, tabId, frameId, mediaId: id, codec, height, fallback });
     }
     reason = host.installed ? 'noTarget' : 'noHost';
   }
@@ -369,6 +412,7 @@ const handlers = {
   'media:download': downloadMedia,
   'shot:download': downloadShot,
   'host:info': ({ force }) => hostInfo(force),
+  'host:update': updateYtdlp,
   'job:cancel': jobOps.cancel,
   'job:dismiss': jobOps.dismiss,
   'audio:get': audio.get,

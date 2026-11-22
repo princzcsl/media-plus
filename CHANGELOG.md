@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.7.0
+- When yt-dlp can't read a page (site changed, request refused…), the download is tried again with the stream the player itself loaded (MP4 or HLS playlist)
+- yt-dlp is told which page the media comes from (referer), which some video hosts require
+- Settings: the yt-dlp version shows its age with a warning past 45 days, and an "Update" button updates it (yt-dlp -U, winget as plan B)
+- Run `host/install.cmd` again for this version
+
 ## 1.6.1
 - The mixer switch is remembered per site, and the mixer is off on a site it has never been turned on for. A tab already being processed keeps going until its own switch is turned off
 

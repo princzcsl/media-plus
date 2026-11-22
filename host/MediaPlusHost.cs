@@ -29,7 +29,7 @@ class Job
 
 static class Host
 {
-    const string Version = "1.1.0";
+    const string Version = "1.2.0";
     static readonly object OutLock = new object();
     static readonly object JobsLock = new object();
     static readonly Dictionary<string, Job> Jobs = new Dictionary<string, Job>();
@@ -146,6 +146,12 @@ static class Host
         {
             StartDownload(msg);
         }
+        else if (cmd == "update")
+        {
+            Thread worker = new Thread(delegate () { UpdateYtdlp(id); });
+            worker.IsBackground = true;
+            worker.Start();
+        }
         else if (cmd == "cancel")
         {
             Job job = Find(id);
@@ -214,6 +220,14 @@ static class Host
             args.Add("--download-sections");
             args.Add("*" + start.ToString("0.###", CultureInfo.InvariantCulture) + "-" + end.ToString("0.###", CultureInfo.InvariantCulture));
             args.Add("--force-keyframes-at-cuts");
+        }
+
+        // Page the media was on: some CDNs only serve their files to their own pages.
+        string referer = Str(msg, "referer");
+        if (!string.IsNullOrEmpty(referer) && (referer.StartsWith("http://") || referer.StartsWith("https://")) && referer.Length < 2000 && referer.IndexOf('"') < 0)
+        {
+            args.Add("--referer");
+            args.Add(referer);
         }
 
         string cookies = Str(msg, "cookies");
@@ -298,6 +312,92 @@ static class Host
         {
             if (!job.Cancelled) Send(Obj("type", "error", "id", job.Id, "error", e.Message));
         }
+    }
+
+    // yt-dlp updates itself (-U), also when it was installed by winget; winget is the plan B.
+    static void UpdateYtdlp(string id)
+    {
+        string output;
+        bool ok = RunUpdate(ytdlp, "-U", out output);
+        if (!ok && ytdlp.IndexOf("WinGet", StringComparison.OrdinalIgnoreCase) >= 0)
+        {
+            string wingetOutput;
+            ok = RunUpdate("winget", "upgrade -e --id yt-dlp.yt-dlp --accept-source-agreements --accept-package-agreements --disable-interactivity", out wingetOutput);
+            output = wingetOutput;
+        }
+
+        string version = ReadVersion();
+        if (version != null)
+        {
+            ytdlpVersion = version;
+            SaveVersion(version);
+        }
+        string[] lines = output.Split(new char[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+        Send(Obj("type", "updated", "id", id, "ok", ok, "ytdlp", ytdlpVersion, "log", lines.Length > 0 ? lines[lines.Length - 1].Trim() : ""));
+    }
+
+    static bool RunUpdate(string exe, string args, out string output)
+    {
+        output = "";
+        try
+        {
+            ProcessStartInfo psi = new ProcessStartInfo(exe, args);
+            psi.UseShellExecute = false;
+            psi.RedirectStandardInput = true;
+            psi.RedirectStandardOutput = true;
+            psi.RedirectStandardError = true;
+            psi.CreateNoWindow = true;
+            using (Process p = Process.Start(psi))
+            {
+                p.StandardInput.Close();
+                output = p.StandardOutput.ReadToEnd() + p.StandardError.ReadToEnd();
+                p.WaitForExit(300000);
+                // "Already up to date" / "No available upgrade" come with a non-zero code too.
+                return p.ExitCode == 0
+                    || output.IndexOf("up to date", StringComparison.OrdinalIgnoreCase) >= 0
+                    || output.IndexOf("No available upgrade", StringComparison.OrdinalIgnoreCase) >= 0
+                    || output.IndexOf("No newer", StringComparison.OrdinalIgnoreCase) >= 0;
+            }
+        }
+        catch (Exception e)
+        {
+            output = e.Message;
+            return false;
+        }
+    }
+
+    static string ReadVersion()
+    {
+        try
+        {
+            ProcessStartInfo psi = new ProcessStartInfo(ytdlp, "--version");
+            psi.UseShellExecute = false;
+            psi.RedirectStandardInput = true;
+            psi.RedirectStandardOutput = true;
+            psi.CreateNoWindow = true;
+            using (Process p = Process.Start(psi))
+            {
+                p.StandardInput.Close();
+                string v = p.StandardOutput.ReadToEnd().Trim();
+                p.WaitForExit(60000);
+                return v.Length > 0 ? v : null;
+            }
+        }
+        catch { return null; }
+    }
+
+    static void SaveVersion(string version)
+    {
+        try
+        {
+            string file = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "config.json");
+            Dictionary<string, object> cfg = System.IO.File.Exists(file)
+                ? Json.Deserialize<Dictionary<string, object>>(System.IO.File.ReadAllText(file))
+                : new Dictionary<string, object>();
+            cfg["ytdlpVersion"] = version;
+            System.IO.File.WriteAllText(file, Json.Serialize(cfg), new UTF8Encoding(false));
+        }
+        catch { }
     }
 
     static string SafeSpec(string value)

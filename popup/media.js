@@ -539,6 +539,7 @@ export function initMedia(tab, settings, mixer, host) {
       else if (job.status === 'done') info = t(job.canceled ? 'jobCanceled' : 'jobDone');
       else if (job.status === 'saving') info = t('jobSaving');
       else if (job.stage) info = t('jobProcessing');
+      else if (job.retried && !job.pct) info = t('jobRetry');
       else info = [`${Math.round(job.pct || 0)} %`, job.speed, job.eta && job.eta !== 'NA' ? job.eta : ''].filter(Boolean).join(' · ');
 
       const buttons = [];

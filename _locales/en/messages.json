@@ -452,6 +452,24 @@
   "hostInstall": {
     "message": "Install"
   },
+  "ytdlpUpdate": {
+    "message": "Update"
+  },
+  "ytdlpUpdating": {
+    "message": "Updating…"
+  },
+  "ytdlpUpdated": {
+    "message": "yt-dlp is up to date ($1)"
+  },
+  "ytdlpUpdateFailed": {
+    "message": "Update failed:"
+  },
+  "ytdlpOld": {
+    "message": "$1 days old: sites change often, update it if a download fails"
+  },
+  "jobRetry": {
+    "message": "The site's method failed, trying with the stream the player loaded…"
+  },
   "hostFailed": {
     "message": "Chrome couldn't talk to the companion:"
   },

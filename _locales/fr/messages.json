@@ -452,6 +452,24 @@
   "hostInstall": {
     "message": "Installer"
   },
+  "ytdlpUpdate": {
+    "message": "Mettre à jour"
+  },
+  "ytdlpUpdating": {
+    "message": "Mise à jour…"
+  },
+  "ytdlpUpdated": {
+    "message": "yt-dlp est à jour ($1)"
+  },
+  "ytdlpUpdateFailed": {
+    "message": "La mise à jour a échoué :"
+  },
+  "ytdlpOld": {
+    "message": "$1 jours : les sites changent souvent, mets-le à jour si un téléchargement échoue"
+  },
+  "jobRetry": {
+    "message": "La méthode du site a échoué, nouvel essai avec le flux du lecteur…"
+  },
   "hostFailed": {
     "message": "Chrome n'arrive pas à joindre le module :"
   },
